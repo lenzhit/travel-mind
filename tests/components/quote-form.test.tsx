@@ -1,0 +1,21 @@
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ push: vi.fn(), prepare: vi.fn(), request: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("@/features/visitor/client", () => ({ prepareVisitor: mocks.prepare, requestData: mocks.request }));
+import { QuoteForm } from "@/components/features/quotes/quote-form";
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+it("un reintento conserva la clave y habilita el formulario al volver de la cotización", async () => {
+  mocks.prepare.mockResolvedValue(undefined);
+  mocks.request.mockRejectedValueOnce(new Error("Intenta nuevamente")).mockResolvedValueOnce({ id: "quote-fixture" });
+  render(<QuoteForm packageId="package-fixture" initialDate="2027-01-12" initialTravelers={2} />);
+  const form = screen.getByRole("form", { name: "Solicitar cotización" });
+  fireEvent.submit(form);
+  await screen.findByRole("alert");
+  const key = mocks.request.mock.calls[0][1].headers["Idempotency-Key"];
+  fireEvent.submit(form);
+  await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/quotes/quote-fixture"));
+  expect(mocks.request.mock.calls[1][1].headers["Idempotency-Key"]).toBe(key);
+  expect(screen.getByRole("button", { name: "Solicitar cotización" })).toBeEnabled();
+});

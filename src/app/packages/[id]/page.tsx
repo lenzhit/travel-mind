@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
 import type { Currency } from "@/types";
+import { QuoteForm } from "@/components/features/quotes/quote-form";
 
 interface PackageDetailPageProps {
   params: Promise<{ id: string }>;
@@ -86,8 +87,8 @@ async function PackageDetailContent({ params }: PackageDetailPageProps) {
             <Badge variant="accent" className="capitalize">
               {pkg.category}
             </Badge>
-            <Badge variant="demo">
-              Demostración Académica
+            <Badge variant="outline">
+              Experiencia de viaje
             </Badge>
           </div>
 
@@ -248,25 +249,19 @@ async function PackageDetailContent({ params }: PackageDetailPageProps) {
                   </div>
                 </div>
 
-                {/* Advertencia Transparente de Modo Demostración */}
+                {/* Condiciones de la tarifa */}
                 <div className="p-3.5 rounded-lg border border-accent/30 bg-accent/5 text-xs text-foreground space-y-1.5">
                   <div className="flex items-center gap-1.5 font-semibold text-accent">
                     <ShieldAlert className="size-4 shrink-0" aria-hidden="true" />
-                    <span>Transparencia de Simulación</span>
+                    <span>Antes de planificar tu viaje</span>
                   </div>
                   <p className="text-muted-foreground leading-relaxed text-[11px]">
-                    El motor de cotización verificable con validez de 24 horas y reconfirmación con BookerAgent se activará en la Fase 2. No se procesan cobros en esta fase.
+                    El precio es referencial. La tarifa final y la disponibilidad deben reconfirmarse antes de reservar.
                   </p>
                 </div>
 
                 {/* Botón no engañoso */}
-                <Button
-                  disabled
-                  className="w-full text-xs font-medium cursor-not-allowed opacity-75"
-                  aria-disabled="true"
-                >
-                  Cotización disponible en Fase 2
-                </Button>
+                <QuoteForm packageId={pkg.id} variants={pkg.variants.filter(item => item.status === "active").map(({ id, name, priceMinor, capacity }) => ({ id, name, priceMinor, capacity }))} />
               </CardContent>
             </Card>
 

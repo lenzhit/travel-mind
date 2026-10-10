@@ -12,7 +12,13 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
-    "db:seed": "tsx src/server/db/seed.ts"
+    "db:seed": "tsx src/server/db/seed.ts",
+    "db:publish-demo": "tsx src/server/db/publish-demo-catalog.ts",
+    "admin:password": "node scripts/admin-password.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "rag:index": "tsx src/server/ai/index-catalog.ts",
+    "quotes:expire": "tsx src/server/db/expire-quotes.ts",
+    "api:docs": "tsx scripts/generate-openapi.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",

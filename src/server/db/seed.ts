@@ -1,5 +1,6 @@
 import { db, conn } from "./index";
 import { destinations, packages, packageVariants } from "./schema";
+import { publishDemoCatalog } from "./publish-demo-catalog";
 
 /**
  * Generador de placeholders SVG locales para destinos de TravelMind (utilidad de respaldo)
@@ -33,11 +34,7 @@ export function createDestinationSvgPlaceholder(title: string, subtitle: string,
 export async function runSeed() {
   console.log("Iniciando seed reproducible de catálogo demostrativo...");
 
-  // Limpiar datos existentes en orden inverso por FK
-  await db.delete(packageVariants);
-  await db.delete(packages);
-  await db.delete(destinations);
-  console.log("Tablas limpiadas.");
+  // No borrar cambios administrativos ni su historial al volver a ejecutar el seed.
 
   // 1. Insertar Destinos (con imágenes locales bajo licencias abiertas en public/images/destinations/)
   const destinationData = [
@@ -97,12 +94,14 @@ export async function runSeed() {
     },
   ];
 
-  const insertedDestinations = await db
+  await db
     .insert(destinations)
     .values(destinationData)
-    .returning();
+    .onConflictDoNothing();
 
-  console.log(`Insertados ${insertedDestinations.length} destinos.`);
+  const insertedDestinations = await db.select().from(destinations);
+
+  console.log(`Verificados ${insertedDestinations.length} destinos existentes o demo.`);
 
   const destMap = new Map(insertedDestinations.map((d) => [d.slug, d.id]));
 
@@ -520,7 +519,8 @@ export async function runSeed() {
 
   for (const pkg of packagesData) {
     const { variants, ...pkgInsert } = pkg;
-    const [insertedPkg] = await db.insert(packages).values(pkgInsert).returning();
+    const [insertedPkg] = await db.insert(packages).values(pkgInsert).onConflictDoNothing().returning();
+    if (!insertedPkg) continue;
 
     if (variants && variants.length > 0) {
       await db.insert(packageVariants).values(
@@ -535,7 +535,8 @@ export async function runSeed() {
     }
   }
 
-  console.log(`Insertados ${packagesData.length} paquetes con sus respectivas variantes.`);
+  await publishDemoCatalog();
+  console.log(`Verificados ${packagesData.length} paquetes demo sin sobrescribir registros existentes.`);
   console.log("Seed completado exitosamente.");
 }
 

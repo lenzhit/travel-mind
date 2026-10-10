@@ -191,3 +191,54 @@ travel-mind/
 
 - [`AGENTS.md`](./AGENTS.md): Reglas de negocio, seguridad, IA y directivas de desarrollo para agentes y programadores.
 - [`docs/cost-matrix.md`](./docs/cost-matrix.md): Catálogo de tecnologías aprobadas y criterios de presupuesto cero.
+
+## 9. Fase 1B: administración local y contenido aprobado
+
+La interfaz de negocio utiliza navegación de paquetes/destinos y textos para viajeros y administradores. Se retiraron de las pantallas los avisos globales de demo, presupuesto, fases, arquitectura y enlaces de diagnóstico por solicitud del usuario. El entorno técnico conserva su configuración local; la ficha muestra tarifa referencial y reconfirmación de disponibilidad, sin presentar una cotización o reserva como realizada. Este ajuste no agrega dependencias ni cambia el esquema.
+
+Verificación de este ajuste: portada y catálogo revisados en navegador; navegación con teclado y catálogo a 320 px sin desbordamiento horizontal. Se retiró la prueba del banner eliminado y se adaptaron las pruebas al vocabulario de negocio.
+
+El catálogo público de la fase 1A se amplió con `/admin`: listar, crear, editar y archivar paquetes. Archivar es reversible mediante el selector de publicación. El precio se ingresa en centavos USD; las variantes existentes se conservan. El seed ahora agrega datos faltantes sin borrar cambios ni auditorías.
+
+Preparación desde una terminal WSL:
+
+```bash
+pnpm db:migrate
+pnpm db:publish-demo # Aprobar la primera versión del catálogo demo existente; idempotente
+pnpm admin:password # Entrada oculta; genera un hash scrypt con salt aleatorio
+```
+
+Copiar únicamente la línea `ADMIN_PASSWORD_HASH=...` generada a `.env.local` (no al repositorio) y reiniciar `pnpm dev`. Abrir `http://localhost:3000/admin` e ingresar la contraseña elegida. El acceso permanece deshabilitado hasta configurar el hash. No existe contraseña predeterminada.
+
+Sesión opaca de una hora, guardada en PostgreSQL como hash; cookie HttpOnly y SameSite Strict (Secure bajo HTTPS). Cerrar sesión revoca el token. Todas las rutas administrativas exigen rol `admin` en servidor. Las mutaciones exigen Origin del mismo sitio, JSON estricto y máximo 64 KiB; login permite diez intentos por minuto y proceso. Esta identidad `local-admin` es exclusiva de demo y no implementa aún usuarios/customer, MFA ni control distribuido. Iniciar la demo enlazada a loopback: `pnpm dev --hostname 127.0.0.1`.
+
+Contratos nuevos (éxito `{ data }`; error `{ error: { code, message, correlationId } }`):
+
+| Método / ruta | Entrada / resultado |
+|---|---|
+| POST `/api/admin/session` | `{ password }`; cookie de sesión |
+| GET / DELETE `/api/admin/session` | Consultar sesión / revocarla |
+| GET `/api/admin/packages?page=1` | Hasta 20 paquetes, incluyendo archivados |
+| POST `/api/admin/packages` | Campos estrictos de `adminPackageSchema`; 201 |
+| PATCH `/api/admin/packages/:id` | Mismos campos completos + `expectedUpdatedAt`; 409 si cambió |
+
+La edición reemplaza los campos del paquete, registra auditoría y crea una versión documental en la misma transacción. `catalog_documents` guarda fuente, idioma, ACL pública, hash, responsable y fecha. Solo la versión aprobada de un paquete activo es recuperable; las anteriores se marcan `superseded`. Los documentos omiten tarifas y cupos. Son la base del RAG implementado en la fase 2; los detalles actuales están en docs/recommendations-quotes.md. La publicación inicial de datos demo no modifica precios ni afirma disponibilidad real.
+
+Pruebas con PostgreSQL separado (no usa cuentas externas):
+
+```bash
+docker exec travelmind-postgres createdb -U postgres travelmind_admin_test # Solo la primera vez
+pnpm test:integration
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+La configuración de integración fija `localhost/travelmind_admin_test`, migra las tablas y elimina únicamente sus fixtures. La migración nueva agrega `admin_sessions`, `catalog_documents`, `audit_logs` y constraints de precio/duración. Rollback de desarrollo: `src/server/db/rollbacks/0001-admin.sql`; retirar el código de esta fase antes de revertir y conservar un respaldo si existe historial necesario. No ejecutar el rollback en una base compartida.
+
+Fase 2 implementada: asistente en /chat, recomendaciones con fuentes, búsqueda determinista, adaptador Ollama local, índice pgvector y cotizaciones privadas de 24 horas. Consulta [el manual de recomendaciones y cotizaciones](docs/recommendations-quotes.md). Ollama y los modelos no están instalados en el entorno verificado; se probó el fallback real y el adaptador mediante respuestas controladas. Siguiente fase: reserva, autenticación de clientes, revalidación, HITL y pago local simulado.
+
+Verificación del 2026-10-10: `pnpm test` (29 pruebas), `pnpm test:integration` (8 pruebas), `pnpm typecheck`, `pnpm lint` y `pnpm build` exitosos. Migración aplicada a PostgreSQL local; rollback y reaplicación comprobados exclusivamente en `travelmind_admin_test`. Navegador: acceso y guardado con teclado, foco al abrir editor y revisión a 320 px sin desbordamiento horizontal del documento. No constituye auditoría completa WCAG. No hay aún script Playwright E2E ni recorrido de reserva/pago completo.
+
+Verificación fase 2 (2026-10-10): 39 pruebas unitarias/componentes y 16 de integración exitosas; lint, typecheck y build correctos. Recorrido de navegador recomendación → fuente → cotización comprobado con teclado y a 320 px. Migración 0002 aplicada localmente; rollback y reaplicación probados solo en la base de test. Contrato OpenAPI disponible en docs/openapi-phase2.json. Inferencia real con Ollama pendiente de instalar los modelos; fallback determinista operativo.

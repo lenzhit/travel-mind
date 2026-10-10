@@ -29,6 +29,10 @@
 
 ## Reglas de aprobación de nuevas herramientas
 
+### Cambio fase 1B — 2026-10-10
+
+Sin nuevas dependencias, modelos ni integraciones remotas. Autenticación demo con `node:crypto` del runtime Node ya instalado (scrypt, SHA-256 y aleatoriedad criptográfica), PostgreSQL y Drizzle existentes. Operación y pruebas íntegramente locales, sin registro, tarjeta, cuota ni riesgo de facturación. No se activó Ollama ni se descargaron modelos. El recorrido completo de reserva/pago sigue pendiente de fases 2–3; este cambio verifica exclusivamente catálogo y administración.
+
 1. Confirmar licencia exacta, plan gratuito permanente, cuotas, límites de uso académico, requisitos de tarjeta, facturación automática y fecha de revisión.
 2. Justificar que cumple una necesidad no cubierta por la pila existente y que mejora el proyecto sin obligar a pagar.
 3. Documentar una alternativa local sin cuenta. Toda funcionalidad crítica debe ser probada con el modo `demo`.
@@ -45,3 +49,14 @@
 - [ ] La interfaz distingue simulaciones de reservas/pagos verdaderos.
 - [ ] Las licencias de modelos, librerías e imágenes usadas han sido revisadas.
 - [ ] Se registran los requisitos aproximados de CPU/RAM/almacenamiento de la demostración.
+
+### Cambio fase 2 — 2026-10-10
+
+Sin nuevas dependencias npm ni servicios remotos obligatorios. Presupuesto obligatorio USD 0; catálogo, sesión, recomendaciones y cotización funcionan con PostgreSQL/Node existentes sin inferencia. Descarga de modelos opcional y manual; no se ejecutó en este entorno.
+
+| Recurso opcional | Propósito/licencia verificada | Límites y riesgo | Alternativa local |
+|---|---|---|---|
+| [qwen2.5:1.5b-instruct-q4_1](https://ollama.com/library/qwen2.5:1.5b-instruct-q4_1/blobs/832dd9e00a68) | Ranking acotado; Apache-2.0 del modelo, distinto de Ollama MIT; consulta oficial 2026-10-10 | Sin cuenta/tarjeta/cuota de tokens; descarga inicial y almacenamiento local; capacidad depende CPU/RAM. Sin facturación automática ni llamadas cloud | Selección determinista del catálogo |
+| [nomic-embed-text:v1.5](https://ollama.com/library/nomic-embed-text:v1.5), [ficha oficial Nomic](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) | Embeddings locales 768 dimensiones, Apache-2.0; consulta oficial 2026-10-10 | Artefacto Ollama 274 MB; descarga inicial opcional, CPU/RAM y disco locales. Sin cuenta, tarjeta ni cobro por consulta | Fragmentos y búsqueda textual sobre documentos aprobados |
+
+APIs oficiales comprobadas: [Ollama chat](https://docs.ollama.com/api/chat) y [embed](https://docs.ollama.com/api/embed). Modelos fijados en código; no asumir licencias de otras variantes. Las pruebas no necesitan Ollama ni internet; pgvector y ranking se ejercitan con respuestas controladas. No se comprobó inferencia real, calidad ni consumo de hardware de los modelos.

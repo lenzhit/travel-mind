@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 export const metadata: Metadata = {
   title: "Catálogo de Paquetes Turísticos — TravelMind",
   description:
-    "Explora paquetes turísticos verificables en los principales destinos de Perú. Demostración académica con presupuesto cero.",
+    "Explora paquetes turísticos en los principales destinos del Perú. Compara itinerarios, servicios y precios por persona.",
 };
 
 interface PackagesPageProps {
@@ -76,16 +76,16 @@ async function PackagesContent({ searchParams }: PackagesPageProps) {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2">
-              <Badge variant="demo" className="text-xs">
+              <Badge variant="outline" className="text-xs">
                 <Sparkles className="size-3 mr-1 text-accent" aria-hidden="true" />
-                Catálogo Turístico de Demostración
+                Experiencias en Perú
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold text-primary tracking-tight">
               Explorar Paquetes en Perú
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
-              Descubre itinerarios culturales, de aventura y naturaleza. Consulta tarifas referenciales calculadas en céntimos enteros bajo política de presupuesto cero.
+              Descubre itinerarios culturales, de aventura y naturaleza. Encuentra la experiencia que mejor se adapta a tu viaje.
             </p>
           </div>
 

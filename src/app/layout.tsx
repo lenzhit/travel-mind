@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { DemoBanner } from "@/components/shared/demo-banner";
+
 import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 
@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TravelMind — Sistema Inteligente para Turismo",
+  title: "TravelMind — Descubre tu próximo viaje",
   description:
-    "Recomendación, cotización y reserva de paquetes turísticos asistidos por Agentes de IA. Proyecto de investigación con presupuesto cero.",
+    "Explora destinos del Perú, compara paquetes turísticos y descubre itinerarios, experiencias y precios para tu próximo viaje.",
 };
 
 export const viewport = {
@@ -41,7 +41,7 @@ export default function RootLayout({
         >
           Saltar al contenido principal
         </a>
-        <DemoBanner />
+
         <Navbar />
         <main id="contenido-principal" tabIndex={-1} className="flex-1 flex flex-col focus:outline-none">
           {children}
