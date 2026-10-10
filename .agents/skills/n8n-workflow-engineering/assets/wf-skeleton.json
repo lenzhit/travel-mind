@@ -1,0 +1,68 @@
+{
+  "name": "wf_skeleton",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "travelmind-internal",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-internal",
+      "name": "Internal webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "replace-with-local-id",
+      "notes": "El secreto vive en la credencial de la instancia local, no en este archivo."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/internal/workflows/example",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ correlationId: $json.correlationId, event: $json.event }) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "call-next",
+      "name": "Call Next.js",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [560, 300],
+      "notes": "Sustituir la ruta por el endpoint interno real. No reintentar 4xx de negocio."
+    }
+  ],
+  "connections": {
+    "Internal webhook": {
+      "main": [
+        [
+          {
+            "node": "Call Next.js",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "template": true,
+    "travelmind": "No importar a producción. No pegar credenciales."
+  }
+}

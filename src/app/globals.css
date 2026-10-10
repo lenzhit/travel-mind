@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F7FAFC;
+  --foreground: #142335;
+  --surface: #FFFFFF;
+  --surface-foreground: #142335;
+
+  --primary: #123A63;
+  --primary-foreground: #FFFFFF;
+
+  --accent: #0E8F88;
+  --accent-foreground: #FFFFFF;
+
+  --muted: #E2E8F0;
+  --muted-foreground: #475569;
+
+  --border: #CBD5E1;
+  --input: #E2E8F0;
+  --ring: #123A63;
+
+  --warning: #B45309;
+  --warning-foreground: #FFFFFF;
+
+  --danger: #B42318;
+  --danger-foreground: #FFFFFF;
+
+  --success: #15803D;
+  --success-foreground: #FFFFFF;
+
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+* {
+  border-color: var(--border);
+}
