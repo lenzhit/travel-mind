@@ -37,19 +37,25 @@ export function Navbar() {
           className="hidden md:flex items-center gap-6 text-sm font-medium"
         >
           <Link
-            href="#fundamentos"
+            href="/packages"
+            className="text-foreground hover:text-primary font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 py-0.5"
+          >
+            Catálogo
+          </Link>
+          <Link
+            href="/#fundamentos"
             className="text-foreground/80 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 py-0.5"
           >
             Fundamentos
           </Link>
           <Link
-            href="#arquitectura"
+            href="/#arquitectura"
             className="text-foreground/80 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 py-0.5"
           >
             Arquitectura
           </Link>
           <Link
-            href="#estado-sistema"
+            href="/#estado-sistema"
             className="text-foreground/80 hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 py-0.5"
           >
             Estado del Sistema
@@ -91,21 +97,28 @@ export function Navbar() {
         <div className="md:hidden border-b border-border bg-surface px-4 py-4 space-y-3">
           <nav className="flex flex-col space-y-2 text-sm font-medium">
             <Link
-              href="#fundamentos"
+              href="/packages"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-2 py-1.5 rounded-md hover:bg-muted text-foreground font-semibold"
+            >
+              Catálogo de Paquetes
+            </Link>
+            <Link
+              href="/#fundamentos"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 rounded-md hover:bg-muted text-foreground"
             >
               Fundamentos
             </Link>
             <Link
-              href="#arquitectura"
+              href="/#arquitectura"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 rounded-md hover:bg-muted text-foreground"
             >
               Arquitectura
             </Link>
             <Link
-              href="#estado-sistema"
+              href="/#estado-sistema"
               onClick={() => setMobileMenuOpen(false)}
               className="px-2 py-1.5 rounded-md hover:bg-muted text-foreground"
             >

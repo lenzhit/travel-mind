@@ -1,13 +1,15 @@
 /**
- * Módulo de Catálogo de Paquetes Turísticos (Fase 1 placeholder)
- * Contendrá la lógica de dominio, componentes y contratos del catálogo.
+ * Módulo de Catálogo de Paquetes Turísticos (Fase 1A)
  */
 
-export interface PackageSummary {
-  id: string;
-  title: string;
-  destination: string;
-  priceMinor: number;
-  currency: string;
-  durationDays: number;
+import type { Destination, Package, PackageVariant } from "@/server/db/schema";
+export * from "./schemas";
+
+export interface PackageListItem extends Package {
+  destination: Destination;
+}
+
+export interface PackageDetail extends Package {
+  destination: Destination;
+  variants: PackageVariant[];
 }

@@ -59,11 +59,25 @@ cp .env.example .env.local
 pnpm install
 ```
 
-### 4.4 Iniciar el servidor de desarrollo
+### 4.4 Levantar PostgreSQL local con pgvector (Docker Compose)
+```bash
+docker compose up -d
+```
+
+### 4.5 Ejecutar migraciones y seed de catálogo demostrativo
+```bash
+# Aplicar migraciones con Drizzle ORM
+pnpm db:migrate
+
+# Cargar catálogo de 14 experiencias demostrativas en Perú
+pnpm db:seed
+```
+
+### 4.6 Iniciar el servidor de desarrollo
 ```bash
 pnpm dev
 ```
-La aplicación estará disponible en [http://localhost:3000](http://localhost:3000).
+La aplicación estará disponible en [http://localhost:3000](http://localhost:3000) y el catálogo en [http://localhost:3000/packages](http://localhost:3000/packages).
 
 ---
 
@@ -92,11 +106,29 @@ pnpm build
 
 # Iniciar servidor de producción compilado
 pnpm start
+
+# Generar migraciones Drizzle desde el esquema
+pnpm db:generate
+
+# Ejecutar migraciones en PostgreSQL
+pnpm db:migrate
+
+# Ejecutar seeder demostrativo
+pnpm db:seed
 ```
 
 ---
 
-## 6. Endpoints de Diagnóstico
+## 6. Endpoints de API
+
+### `GET /api/packages`
+Consulta paginada del catálogo turístico con filtros y búsqueda:
+- **Parámetros opcionales:** `search`, `destinationId`, `category`, `minPriceMinor`, `maxPriceMinor`, `durationDays`, `sortBy` (`price`, `duration`, `title`, `createdAt`), `sortOrder` (`asc`, `desc`), `page`, `pageSize`.
+- **Ejemplo:** `curl "http://localhost:3000/api/packages?category=aventura&pageSize=5"`
+
+### `GET /api/packages/:id`
+Consulta de un paquete específico por ID (UUID) o slug, incluyendo destino y variantes activas:
+- **Ejemplo:** `curl "http://localhost:3000/api/packages/machu-picchu-magico-valle-sagrado"`
 
 ### `GET /api/health`
 Verifica el estado operativo del servicio, política de gasto y adaptadores activos:

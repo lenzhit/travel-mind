@@ -8,6 +8,8 @@
 | Tailwind / shadcn/ui / Lucide | UI y componentes | Open source; validar licencias por paquete (Tailwind MIT, Lucide ISC, Radix Slot MIT, CVA Apache-2.0, clsx MIT, tailwind-merge MIT) | USD 0 | Evitar kits premium y assets sin permiso | https://tailwindcss.com ; https://ui.shadcn.com ; https://lucide.dev |
 | PostgreSQL | Base de datos | Licencia PostgreSQL | USD 0 | Instancia local; copias de seguridad locales | https://www.postgresql.org/about/licence/ |
 | pgvector | Índice semántico | Open source | USD 0 | Extensión en PostgreSQL local | https://github.com/pgvector/pgvector |
+| Drizzle ORM / postgres driver | ORM, migraciones y driver DB | Open source (Drizzle Apache-2.0, postgres MIT/PostgreSQL) | USD 0 | Ejecución local en Node/Next.js; migraciones versionadas en repo | https://orm.drizzle.team ; https://github.com/porsager/postgres |
+| Zod | Validación de esquemas y contratos | Open source (MIT) | USD 0 | Validación estricta en servidor y runtime | https://zod.dev |
 | Ollama | Servidor local de inferencia | MIT | USD 0 | Modelos requieren licencia independiente; CPU/RAM disponibles condicionan latencia | https://github.com/ollama/ollama/blob/main/LICENSE |
 | Qwen2.5 1.5B/7B (opcionales) | Modelo LLM de demo | La página de Qwen2.5 indica Apache-2.0 para estas variantes | USD 0 | Comprobar etiqueta y licencia exactas en cada versión/quantización; el modelo 3B no hereda automáticamente la licencia | https://ollama.com/library/qwen2.5 |
 | Embeddings locales | Indexación semántica | Depende del modelo elegido | USD 0 | Verificar licencia del modelo y ejecutarlo localmente; no APIs por token | https://ollama.com ; https://sbert.net |
@@ -22,6 +24,7 @@
 | GitHub Actions (OPCIONAL) | CI | Free allowance sujeto a tipo de repositorio y cuotas | USD 0 dentro del límite | Repos públicos con runners estándar tienen ejecución gratuita; privados tienen cuota; CI local siempre disponible | https://docs.github.com/en/actions/concepts/billing-and-usage |
 | Docker Engine + Compose / Podman | Entorno reproducible | Código abierto; revisar condiciones del producto Desktop si se usa | USD 0 | Priorizar motor open source; evitar dependencia de licencia Desktop si deja de ser elegible | https://docs.docker.com/engine/ ; https://podman.io |
 | Penpot (OPCIONAL) | Prototipado de UI | Herramienta de diseño open source con autoalojamiento disponible | USD 0 usando opción gratuita/autohospedada | No es necesario para levantar la app | https://penpot.app |
+| Recursos visuales / Fotografías | Imágenes de destinos turísticos | CC BY-SA 4.0 / CC BY 2.0 / CC BY 3.0 (Wikimedia Commons) | USD 0 | Autoalojadas localmente en `public/images/destinations/`; atribución documentada en `docs/assets-attribution.md`; sin CDN de pago | https://commons.wikimedia.org |
 | Vercel Hobby (OPCIONAL) | Vista pública del frontend | Plan gratuito solo para uso personal/no comercial, sujeto a límites | USD 0 dentro de límites | **No alojará por sí solo PostgreSQL/n8n/Ollama**; no constituye despliegue gratuito completo | https://vercel.com/docs/plans/hobby |
 
 ## Reglas de aprobación de nuevas herramientas
