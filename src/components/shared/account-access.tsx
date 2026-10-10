@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { CUSTOMER_COOKIE, requireAccount } from "@/server/services/customer-auth";
 import { AdminError } from "@/server/services/admin-errors";
 export async function AccountAccess({ roles, children }: { roles: readonly string[]; children: React.ReactNode }) {
+  await connection();
   const token = (await cookies()).get(CUSTOMER_COOKIE)?.value;
   let actor;
   try { actor = await requireAccount(token); }
@@ -13,3 +15,4 @@ export async function AccountAccess({ roles, children }: { roles: readonly strin
   if (!roles.includes(actor.role)) redirect("/account");
   return children;
 }
+

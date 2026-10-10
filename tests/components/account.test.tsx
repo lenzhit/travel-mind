@@ -48,5 +48,7 @@ it.each(["customer", "admin", "approver"])("Mi cuenta muestra solo herramientas 
   render(<AccountPage />); await screen.findByText("fixture");
   expect(!!screen.queryByRole("link", { name: /Consultar mis reservas/ })).toBe(role === "customer");
   expect(!!screen.queryByRole("link", { name: /Gestionar paquetes/ })).toBe(role === "admin");
+  expect(!!screen.queryByRole("link", { name: /Resumen operativo/ })).toBe(role === "admin");
   expect(!!screen.queryByRole("link", { name: /Revisar solicitudes/ })).toBe(role === "admin" || role === "approver");
 });
+

@@ -7,6 +7,7 @@ import { createVisitor } from "@/server/services/visitor-session";
 import { authenticateCustomer, requireCustomer } from "@/server/services/customer-auth";
 import { quotationService } from "@/server/services/quotation.service";
 import { bookingService } from "@/server/services/booking.service";
+import { readOperationalMetrics } from "@/server/services/operational-metrics";
 import { PaymentService } from "@/server/services/payment.service";
 import { MockPaymentProvider } from "@/server/providers/mock-payment-provider";
 import { MockTravelProvider } from "@/server/providers/mock-travel-provider";
@@ -183,6 +184,29 @@ describe("Reservas y pagos locales verificables", () => {
       expect((await db.select().from(tables.reservations).where(eq(tables.reservations.customerId, customerId))).some(row => row.status === "confirmed_demo")).toBe(true);
     } finally { vi.unstubAllGlobals(); }
   });
+  it("métricas cuentan reservas únicas y detectan conciliación, vencimientos y entregas agotadas", async () => {
+    const before = await readOperationalMetrics();
+    const q = await quote(120000, 2);
+    const row = await reserve(q);
+    // Fixtures de incidencias; ningún evento de pago se ejecuta.
+    const old = new Date(Date.now() - 600000);
+    await db.update(tables.reservations).set({ status: "pending_provider", updatedAt: old }).where(eq(tables.reservations.id, row));
+    await db.update(tables.approvalRequests).set({ expiresAt: new Date(0) }).where(eq(tables.approvalRequests.reservationId, row));
+    await db.insert(tables.payments).values([1, 2].map(() => ({ reservationId: row, quoteVersion: q.version, totalMinor: q.totalMinor, status: "succeeded", idempotencyKey: randomUUID() })));
+    const [event] = await db.select().from(tables.reservationEvents).where(eq(tables.reservationEvents.reservationId, row));
+    await db.insert(tables.notificationDeliveries).values({ reservationId: row, eventId: event.id, channel: "email", status: "failed", attempts: 3, body: "Texto privado de fixture que no debe aparecer en métricas" });
+    await db.update(tables.workflowOutbox).set({ createdAt: old }).where(eq(tables.workflowOutbox.reservationId, row));
+    const snapshot = await readOperationalMetrics();
+    expect(snapshot.totals.reservations).toBe(before.totals.reservations + 1);
+    expect(snapshot.states.reduce((sum, group) => sum + group.count, 0)).toBe(snapshot.totals.reservations);
+    expect(snapshot.alerts.unreconciledPayments).toBe(before.alerts.unreconciledPayments + 1);
+    expect(snapshot.alerts.overdueApprovals).toBe(before.alerts.overdueApprovals + 1);
+    expect(snapshot.alerts.exhaustedNotifications).toBe(before.alerts.exhaustedNotifications + 1);
+    expect(snapshot.alerts.delayedWorkflows).toBeGreaterThan(before.alerts.delayedWorkflows);
+    expect(JSON.stringify(snapshot)).not.toContain("Texto privado"); expect(JSON.stringify(snapshot)).not.toContain("Responsable fixture");
+    await db.update(tables.reservations).set({ updatedAt: new Date() }).where(eq(tables.reservations.id, row));
+    expect((await readOperationalMetrics()).alerts.unreconciledPayments).toBe(before.alerts.unreconciledPayments);
+  });
   it("cerrar sesión revoca el token de cliente y retira ambas cookies", async () => {
     const response = await signOutRoute(new NextRequest("http://localhost:3000/api/customer/session", { method: "DELETE", headers: { Origin: "http://localhost:3000", Cookie: `travelmind_customer=${customerToken}; travelmind_visitor=${visitor.token}` } }));
     expect(response.status).toBe(200);
@@ -191,4 +215,6 @@ describe("Reservas y pagos locales verificables", () => {
     await expect(requireCustomer(customerToken)).rejects.toMatchObject({ status: 401 });
   });
 });
+
+
 

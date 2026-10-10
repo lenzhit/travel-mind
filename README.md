@@ -250,3 +250,8 @@ Mejora del login (2026-10-10): formulario prioritario en móvil, panel de marca 
 
 Actualización de acceso por roles: migración `0004_long_firestar.sql` amplía los roles permitidos conservando las cuentas. Rollback `src/server/db/rollbacks/0004-account-roles.sql` exige que todas las cuentas vuelvan a customer antes de revertir. Sin nuevas dependencias ni servicios.
 Verificación de acceso por roles: 52 pruebas unitarias/componentes y 29 de integración PostgreSQL correctas; lint, typecheck y build correctos. Navegador: login común con cuenta ficticia admin, gestión de paquetes sin segundo acceso, cierre de sesión y redirección segura desde /admin y desde catálogo sin sesión. Cuenta temporal eliminada al terminar.
+
+## Operación y robustez: resumen operativo
+
+Mi cuenta incorpora Resumen operativo para el rol admin. Muestra conteos persistidos, estados y alertas locales con actualización manual, vacío, error y aviso de datos anteriores. Mantiene la administración integrada por roles. No añade proveedores, dependencias ni migraciones. Manual, criterios y límites: [docs/runbooks/operations.md](docs/runbooks/operations.md). API: GET `/api/admin/metrics`, contrato en `docs/openapi-phase4.json`.
+Verificación del incremento operativo: 56 pruebas unitarias/componentes y 30 de integración, lint, typecheck y build correctos; navegación con teclado y vista de 320 px comprobadas.

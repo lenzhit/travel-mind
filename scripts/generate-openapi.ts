@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { z } from "zod";
+import { operationalMetricsSchema } from "../src/features/analytics/schemas";
 import { chatInputSchema } from "../src/features/chat/schemas";
 import { quoteInputSchema } from "../src/features/quotes/schemas";
 import { customerAuthSchema } from "../src/features/customer/schemas";
@@ -48,3 +49,5 @@ const phase3 = { openapi: "3.1.0", info: { title: "TravelMind: reservas y pagos 
 } } };
 writeFileSync("docs/openapi-phase3.json", `${JSON.stringify(phase3, null, 2)}\n`);
 
+
+writeFileSync("docs/openapi-phase4.json", `${JSON.stringify({ ...phase3, info: { ...phase3.info, title: "TravelMind: operación local", version: "0.4.0" }, paths: { ...phase3.paths, "/api/admin/metrics": { get: { operationId: "readOperationalMetrics", description: "Solo admin. Instantánea acumulada de simulaciones locales, incluidos recorridos QA. No son KPIs de producción.", security: [{ CustomerCookie: [] }], responses: { "200": response("OperationalMetrics"), ...errors } } } }, components: { ...phase3.components, schemas: { ...phase3.components.schemas, OperationalMetrics: jsonSchema(operationalMetricsSchema) } } }, null, 2)}\n`);

@@ -14,6 +14,7 @@ import { POST as retiredLogin } from "@/app/api/admin/session/route";
 import { POST as signIn, GET as accountSession, DELETE as signOut } from "@/app/api/customer/session/route";
 import { createVisitor } from "@/server/services/visitor-session";
 import { authenticateCustomer } from "@/server/services/customer-auth";
+import { GET as metrics } from "@/app/api/admin/metrics/route";
 import { GET as approvals } from "@/app/api/admin/approvals/route";
 import type { AdminPackageInput } from "@/features/admin/schemas";
 
@@ -50,6 +51,7 @@ afterAll(async () => {
 describe("Administración con PostgreSQL real", () => {
   it("rechaza invitados en lectura, creación y edición", async () => {
     expect((await GET(request("GET"))).status).toBe(401);
+    expect((await metrics(request("GET"))).status).toBe(401);
     expect((await POST(request("POST", undefined, input))).status).toBe(401);
     const result = await PATCH(request("PATCH", undefined, input), { params: Promise.resolve({ id: randomUUID() }) });
     expect(result.status).toBe(401);
@@ -58,11 +60,14 @@ describe("Administración con PostgreSQL real", () => {
   it("usa roles actuales, ignora la cookie anterior y revoca la sesión común", async () => {
     const token = await login(password);
     expect((await GET(request("GET", token))).status).toBe(200);
+    const summary = await metrics(request("GET", token)); expect(summary.status).toBe(200); expect(summary.headers.get("cache-control")).toBe("no-store"); expect((await summary.json()).data.mode).toBe("demo");
     await db.update(customers).set({ role: "customer" }).where(eq(customers.id, actor));
     expect((await GET(request("GET", token))).status).toBe(403);
+    expect((await metrics(request("GET", token))).status).toBe(403);
     expect((await approvals(request("GET", token))).status).toBe(403);
     await db.update(customers).set({ role: "approver" }).where(eq(customers.id, actor));
     expect((await GET(request("GET", token))).status).toBe(403);
+    expect((await metrics(request("GET", token))).status).toBe(403);
     expect((await approvals(request("GET", token))).status).toBe(200);
     await db.update(customers).set({ role: "admin" }).where(eq(customers.id, actor));
     await signOut(request("DELETE", token));
@@ -137,3 +142,4 @@ describe("Administración con PostgreSQL real", () => {
     expect(await db.select().from(packages).where(eq(packages.destinationId, destinationId))).toHaveLength(1);
   });
 });
+
