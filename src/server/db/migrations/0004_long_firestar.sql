@@ -1,0 +1,2 @@
+ALTER TABLE "customers" DROP CONSTRAINT "customer_role";--> statement-breakpoint
+ALTER TABLE "customers" ADD CONSTRAINT "customer_role" CHECK ("customers"."role" IN ('customer', 'travel_agent', 'approver', 'admin'));

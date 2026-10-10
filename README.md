@@ -198,26 +198,25 @@ La interfaz de negocio utiliza navegación de paquetes/destinos y textos para vi
 
 Verificación de este ajuste: portada y catálogo revisados en navegador; navegación con teclado y catálogo a 320 px sin desbordamiento horizontal. Se retiró la prueba del banner eliminado y se adaptaron las pruebas al vocabulario de negocio.
 
-El catálogo público de la fase 1A se amplió con `/admin`: listar, crear, editar y archivar paquetes. Archivar es reversible mediante el selector de publicación. El precio se ingresa en centavos USD; las variantes existentes se conservan. El seed ahora agrega datos faltantes sin borrar cambios ni auditorías.
+La gestión del catálogo y las aprobaciones están integradas en **Mi cuenta**. Todas las cuentas ingresan con usuario y contraseña en `/account`; no existe un apartado ni una contraseña compartida para administración. `/admin` y `/admin/approvals` redirigen a Mi cuenta.
 
-Preparación desde una terminal WSL:
+El rol se consulta en PostgreSQL en cada operación: `customer` gestiona sus reservas, `admin` gestiona paquetes y aprobaciones, `approver` revisa aprobaciones. `travel_agent` está reservado para atención de casos, todavía no implementada. Las páginas y las API validan permisos en servidor. El registro público siempre crea `customer` y rechaza campos de rol.
+
+Para habilitar una cuenta existente del personal en el entorno local:
 
 ```bash
 pnpm db:migrate
-pnpm db:publish-demo # Aprobar la primera versión del catálogo demo existente; idempotente
-pnpm admin:password # Entrada oculta; genera un hash scrypt con salt aleatorio
+pnpm account:role nombre_usuario admin # O approver / travel_agent / customer
 ```
 
-Copiar únicamente la línea `ADMIN_PASSWORD_HASH=...` generada a `.env.local` (no al repositorio) y reiniciar `pnpm dev`. Abrir `http://localhost:3000/admin` e ingresar la contraseña elegida. El acceso permanece deshabilitado hasta configurar el hash. No existe contraseña predeterminada.
-
-Sesión opaca de una hora, guardada en PostgreSQL como hash; cookie HttpOnly y SameSite Strict (Secure bajo HTTPS). Cerrar sesión revoca el token. Todas las rutas administrativas exigen rol `admin` en servidor. Las mutaciones exigen Origin del mismo sitio, JSON estricto y máximo 64 KiB; login permite diez intentos por minuto y proceso. Esta identidad `local-admin` es exclusiva de demo y no implementa aún usuarios/customer, MFA ni control distribuido. Iniciar la demo enlazada a loopback: `pnpm dev --hostname 127.0.0.1`.
+La cuenta se crea primero desde Mi cuenta. El comando requiere acceso local al proyecto/base de datos, no está expuesto por HTTP y revoca las sesiones de la cuenta modificada. Después se ingresa nuevamente con las mismas credenciales. No se elevan cuentas automáticamente. Las antiguas cookies `travelmind_admin` no conceden permisos; `/api/admin/session` responde 410.
 
 Contratos nuevos (éxito `{ data }`; error `{ error: { code, message, correlationId } }`):
 
 | Método / ruta | Entrada / resultado |
 |---|---|
-| POST `/api/admin/session` | `{ password }`; cookie de sesión |
-| GET / DELETE `/api/admin/session` | Consultar sesión / revocarla |
+| POST `/api/customer/session` | `{ action, username, password }`; cuenta y rol; cookie común |
+| GET / DELETE `/api/customer/session` | Consultar cuenta y rol / revocar sesión |
 | GET `/api/admin/packages?page=1` | Hasta 20 paquetes, incluyendo archivados |
 | POST `/api/admin/packages` | Campos estrictos de `adminPackageSchema`; 201 |
 | PATCH `/api/admin/packages/:id` | Mismos campos completos + `expectedUpdatedAt`; 409 si cambió |
@@ -242,3 +241,12 @@ Fase 2 implementada: asistente en /chat, recomendaciones con fuentes, búsqueda 
 Verificación del 2026-10-10: `pnpm test` (29 pruebas), `pnpm test:integration` (8 pruebas), `pnpm typecheck`, `pnpm lint` y `pnpm build` exitosos. Migración aplicada a PostgreSQL local; rollback y reaplicación comprobados exclusivamente en `travelmind_admin_test`. Navegador: acceso y guardado con teclado, foco al abrir editor y revisión a 320 px sin desbordamiento horizontal del documento. No constituye auditoría completa WCAG. No hay aún script Playwright E2E ni recorrido de reserva/pago completo.
 
 Verificación fase 2 (2026-10-10): 39 pruebas unitarias/componentes y 16 de integración exitosas; lint, typecheck y build correctos. Recorrido de navegador recomendación → fuente → cotización comprobado con teclado y a 320 px. Migración 0002 aplicada localmente; rollback y reaplicación probados solo en la base de test. Contrato OpenAPI disponible en docs/openapi-phase2.json. Inferencia real con Ollama pendiente de instalar los modelos; fallback determinista operativo.
+
+Fase 3 implementada: cuenta de cliente, reserva privada con revalidación/consentimiento, HITL para total > USD 2000, pago local con evento verificado, comprobante del proveedor mock, reversión pendiente y notificaciones recuperables. [Manual de reservas y pagos](docs/reservations-payments.md). Mailpit local se inicia con `docker compose up -d mailpit`; `pnpm workflows:run` procesa la cola y las reversiones. El export n8n está disponible pero su importación/ejecución no fue comprobada. No hay cargos ni reservas externas. Siguiente fase: operación, métricas, alertas y robustez.
+
+Verificación fase 3 (2026-10-10): 44 pruebas unitarias/componentes y 29 de integración correctas; lint, typecheck y build exitosos. `pnpm test:smoke` verifica el recorrido HTTP contra la app local y deja registros ficticios de QA; navegador validado desde cotización hasta confirmación de prueba, con aceptación por teclado y reserva a 320 px sin desbordamiento. Mailpit recibió los mensajes de los recorridos locales. Migración 0003 aplicada; rollback/reaplicación comprobados solo en la base desechable de tests. Contrato OpenAPI: docs/openapi-phase3.json. La revisión de accesibilidad fue puntual; no se ejecutaron Playwright ni n8n.
+
+Mejora del login (2026-10-10): formulario prioritario en móvil, panel de marca en escritorio, mostrar/ocultar contraseña, confirmación al registrar, usuario normalizado y retorno limitado a cotizaciones/reservas internas. Los fallos de conexión permiten reintentar la comprobación de sesión; errores anunciados y enfocados. Sin dependencias, cambios de esquema ni cambios al contrato HTTP de autenticación. Verificación: 49 pruebas unitarias/componentes, lint, typecheck y build correctos; ingreso y salida con cuenta ficticia comprobados mediante teclado en navegador. No se agregó recuperación de contraseña ni proveedor externo.
+
+Actualización de acceso por roles: migración `0004_long_firestar.sql` amplía los roles permitidos conservando las cuentas. Rollback `src/server/db/rollbacks/0004-account-roles.sql` exige que todas las cuentas vuelvan a customer antes de revertir. Sin nuevas dependencias ni servicios.
+Verificación de acceso por roles: 52 pruebas unitarias/componentes y 29 de integración PostgreSQL correctas; lint, typecheck y build correctos. Navegador: login común con cuenta ficticia admin, gestión de paquetes sin segundo acceso, cierre de sesión y redirección segura desde /admin y desde catálogo sin sesión. Cuenta temporal eliminada al terminar.

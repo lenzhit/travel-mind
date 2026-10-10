@@ -173,6 +173,7 @@ export const visitorSessions = pgTable("visitor_sessions", {
   windowStartedAt: timestamp("window_started_at", { withTimezone: true }).defaultNow().notNull(),
   requestCount: integer("request_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  customerId: uuid("customer_id").references(() => customers.id, { onDelete: "restrict" }),
 }, table => [index("visitor_sessions_expiry_idx").on(table.expiresAt)]);
 
 export const ragChunks = pgTable("rag_chunks", {
@@ -215,6 +216,113 @@ export const quotationVersions = pgTable("quotation_versions", {
   id: uuid("id").defaultRandom().primaryKey(),
   quotationId: uuid("quotation_id").notNull().references(() => quotations.id, { onDelete: "restrict" }),
   version: integer("version").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("current"),
   snapshot: jsonb("snapshot").$type<QuoteSnapshot>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, table => [uniqueIndex("quotation_version_idx").on(table.quotationId, table.version)]);
+}, table => [uniqueIndex("quotation_version_idx").on(table.quotationId, table.version), check("quotation_version_status", sql`${table.status} IN ('current', 'superseded')`)]);
+
+export const customers = pgTable("customers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  username: varchar("username", { length: 32 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 161 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("customer"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [check("customer_role", sql`${table.role} IN ('customer', 'travel_agent', 'approver', 'admin')`)]);
+export const customerSessions = pgTable("customer_sessions", {
+  tokenHash: varchar("token_hash", { length: 64 }).primaryKey(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  visitorId: uuid("visitor_id").notNull().references(() => visitorSessions.id, { onDelete: "restrict" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const mockInventory = pgTable("mock_inventory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  packageId: uuid("package_id").notNull().references(() => packages.id, { onDelete: "restrict" }),
+  departureDate: varchar("departure_date", { length: 10 }).notNull(),
+  capacity: integer("capacity").notNull(), remaining: integer("remaining").notNull(),
+  source: varchar("source", { length: 80 }).notNull().default("mock-catalog-capacity-v1"),
+}, table => [uniqueIndex("mock_inventory_departure_idx").on(table.packageId, table.departureDate), check("mock_inventory_bounds", sql`${table.remaining} >= 0 AND ${table.remaining} <= ${table.capacity} AND ${table.capacity} > 0`)]);
+export const reservations = pgTable("reservations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  quotationId: uuid("quotation_id").notNull().unique().references(() => quotations.id, { onDelete: "restrict" }),
+  quoteVersion: integer("quote_version").notNull(),
+  status: varchar("status", { length: 30 }).notNull(),
+  reason: varchar("reason", { length: 80 }),
+  // Minimize traveler PII: only lead name, anonymized after 30 days by maintenance.
+  travelerName: varchar("traveler_name", { length: 80 }),
+  idempotencyKey: uuid("idempotency_key").notNull(), payloadHash: varchar("payload_hash", { length: 64 }).notNull(),
+  providerReference: varchar("provider_reference", { length: 80 }).unique(),
+  correlationId: uuid("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("reservation_customer_key_idx").on(table.customerId, table.idempotencyKey), index("reservations_owner_idx").on(table.customerId, table.createdAt), check("reservation_status", sql`${table.status} IN ('pending_approval','pending_payment','payment_processing','pending_provider','confirmed_demo','rejected','expired','failed','manual_review','refund_pending','refunded','cancelled')`)]);
+export const reservationConsents = pgTable("reservation_consents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  quoteVersion: integer("quote_version").notNull(), totalMinor: integer("total_minor").notNull(),
+  policyVersion: varchar("policy_version", { length: 50 }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("reservation_consent_version_idx").on(table.reservationId, table.quoteVersion)]);
+export const approvalRequests = pgTable("approval_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  quoteVersion: integer("quote_version").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("approval_reservation_version_idx").on(table.reservationId, table.quoteVersion), check("approval_status", sql`${table.status} IN ('pending','approved','rejected','expired')`)]);
+export const approvalDecisions = pgTable("approval_decisions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  approvalId: uuid("approval_id").notNull().unique().references(() => approvalRequests.id, { onDelete: "restrict" }),
+  actor: varchar("actor", { length: 100 }).notNull(), decision: varchar("decision", { length: 20 }).notNull(), reason: varchar("reason", { length: 500 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const payments = pgTable("payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  quoteVersion: integer("quote_version").notNull(),
+  totalMinor: integer("total_minor").notNull(), currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  refundStatus: varchar("refund_status", { length: 20 }).notNull().default("not_required"),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("payment_reservation_key_idx").on(table.reservationId, table.idempotencyKey), check("payment_status", sql`${table.status} IN ('created','pending','succeeded','failed','cancelled')`), check("payment_money", sql`${table.totalMinor} >= 0 AND ${table.currency} = 'USD'`)]);
+export const paymentEvents = pgTable("payment_events", {
+  id: varchar("id", { length: 100 }).primaryKey(),
+  paymentId: uuid("payment_id").notNull().references(() => payments.id, { onDelete: "restrict" }),
+  type: varchar("type", { length: 30 }).notNull(),
+  simulated: varchar("simulated", { length: 10 }).notNull().default("true"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const providerBookingAttempts = pgTable("provider_booking_attempts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().unique().references(() => reservations.id, { onDelete: "restrict" }),
+  providerReference: varchar("provider_reference", { length: 80 }), status: varchar("status", { length: 20 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const reservationEvents = pgTable("reservation_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  event: varchar("event", { length: 50 }).notNull(), actor: varchar("actor", { length: 100 }).notNull(),
+  correlationId: uuid("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const workflowOutbox = pgTable("workflow_outbox", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  eventId: uuid("event_id").notNull().unique().references(() => reservationEvents.id, { onDelete: "restrict" }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const notificationDeliveries = pgTable("notification_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  eventId: uuid("event_id").notNull().references(() => reservationEvents.id, { onDelete: "restrict" }),
+  channel: varchar("channel", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  body: text("body").notNull(), attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+  providerReference: varchar("provider_reference", { length: 100 }),
+}, table => [uniqueIndex("notification_event_channel_idx").on(table.eventId, table.channel)]);

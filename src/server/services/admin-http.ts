@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { assertLocalDemo, requireAdmin, SESSION_COOKIE } from "./admin-auth";
+import { assertLocalDemo } from "./admin-auth";
+import { CUSTOMER_COOKIE, requireAccount } from "./customer-auth";
 import { AdminError } from "./admin-errors";
-export async function adminHandler(request: NextRequest, operation: (actor: string, correlationId: string) => Promise<unknown>, status = 200) {
+export async function adminHandler(request: NextRequest, operation: (actor: string, correlationId: string) => Promise<unknown>, status = 200, roles: readonly string[] = ["admin"]) {
   const correlationId = crypto.randomUUID();
   try {
     assertLocalDemo(request, request.method !== "GET");
-    const actor = await requireAdmin(request.cookies.get(SESSION_COOKIE)?.value);
-    return NextResponse.json({ data: await operation(actor, correlationId) }, { status, headers: { "Cache-Control": "no-store" } });
+    const actor = await requireAccount(request.cookies.get(CUSTOMER_COOKIE)?.value);
+    if (!roles.includes(actor.role)) throw new AdminError("FORBIDDEN", "Tu cuenta no tiene permiso para realizar esta operación.", 403);
+    return NextResponse.json({ data: await operation(actor.id, correlationId) }, { status, headers: { "Cache-Control": "no-store" } });
   } catch (error) { return adminErrorResponse(error, correlationId); }
 }
 export function adminErrorResponse(error: unknown, correlationId = crypto.randomUUID()) {

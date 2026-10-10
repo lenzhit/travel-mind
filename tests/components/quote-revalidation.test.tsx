@@ -1,0 +1,26 @@
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ request: vi.fn(), push: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }) }));
+vi.mock("@/features/visitor/client", () => ({ requestData: mocks.request }));
+import { QuoteDetail } from "@/components/features/quotes/quote-detail";
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+it("revalidar actualiza el desglose visible y solicita únicamente la versión recién aceptada", async () => {
+  const initial = { id: "quote-fixture", status: "issued", issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), version: 1, packageId: "package-fixture", packageTitle: "Paquete original fixture", travelers: 2, departureDate: "2027-01-12", unitPriceMinor: 100000, subtotalMinor: 200000, totalMinor: 200000, taxesMinor: 0, feesMinor: 0, discountMinor: 0, inclusions: [], exclusions: [], requiresApproval: false };
+  const updated = { ...initial, version: 2, packageTitle: "Paquete actualizado fixture", unitPriceMinor: 100001, subtotalMinor: 200002, totalMinor: 200002, requiresApproval: true };
+  let quoteReads = 0;
+  mocks.request.mockImplementation(async (url: string) => url.endsWith("/revalidate") ? { ...updated, available: true, policy: "Condiciones verificadas fixture" } : url === "/api/reserve" ? { id: "reservation-fixture" } : ++quoteReads === 1 ? initial : updated);
+  render(<QuoteDetail id="quote-fixture" />);
+  await screen.findByRole("heading", { name: initial.packageTitle });
+  fireEvent.click(screen.getByRole("button", { name: "Revisar disponibilidad y precio" }));
+  await screen.findByRole("heading", { name: updated.packageTitle });
+  expect(screen.queryByRole("heading", { name: initial.packageTitle })).not.toBeInTheDocument();
+  expect(screen.getByText(/Total vigente:/)).toHaveTextContent("2,000.02");
+  fireEvent.change(screen.getByLabelText("Nombre del responsable"), { target: { value: "Responsable fixture" } });
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.submit(screen.getByRole("button", { name: "Aceptar y solicitar reserva" }).closest("form")!);
+  await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/reservations/reservation-fixture"));
+  const reserve = mocks.request.mock.calls.find(call => call[0] === "/api/reserve");
+  expect(JSON.parse(reserve![1].body)).toMatchObject({ acceptedVersion: 2, acceptedTotalMinor: 200002, termsAccepted: true });
+});

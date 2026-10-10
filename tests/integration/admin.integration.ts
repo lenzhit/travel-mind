@@ -4,27 +4,34 @@ import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { NextRequest } from "next/server";
 import { db, conn } from "@/server/db";
-import { adminSessions, auditLogs, catalogDocuments, destinations, packages } from "@/server/db/schema";
+import { customers, customerSessions, visitorSessions, auditLogs, catalogDocuments, destinations, packages } from "@/server/db/schema";
 import { adminPackageService } from "@/server/services/admin-package.service";
 import { retrieveApprovedCatalogDocuments } from "@/server/repositories/catalog-document.repository";
-import { login, logout, requireAdmin, tokenHash } from "@/server/services/admin-auth";
+import { tokenHash } from "@/server/services/admin-auth";
 import { GET, POST } from "@/app/api/admin/packages/route";
 import { PATCH } from "@/app/api/admin/packages/[id]/route";
-import { POST as signIn } from "@/app/api/admin/session/route";
+import { POST as retiredLogin } from "@/app/api/admin/session/route";
+import { POST as signIn, GET as accountSession, DELETE as signOut } from "@/app/api/customer/session/route";
+import { createVisitor } from "@/server/services/visitor-session";
+import { authenticateCustomer } from "@/server/services/customer-auth";
+import { GET as approvals } from "@/app/api/admin/approvals/route";
 import type { AdminPackageInput } from "@/features/admin/schemas";
 
 const destinationId = randomUUID();
 const createdIds: string[] = [];
-const actor = "local-admin";
+const actor = randomUUID();
+const username = `staff_${actor.slice(0, 8)}`;
+const visitors: string[] = [];
+async function login(password: string) { const visitor = await createVisitor(); visitors.push(visitor.id); return (await authenticateCustomer({ action: "login", username, password }, visitor.id)).token; }
 const password = "academic-demo-test-only";
 const salt = "b".repeat(32);
 const input: AdminPackageInput = { destinationId, title: "Paquete de prueba demo", slug: `test-${randomUUID()}`, description: "Descripción ficticia para comprobar administración local.", durationDays: 2, category: "cultural", basePriceMinor: 12345, currency: "USD", inclusions: ["Actividad demo"], exclusions: [], itinerary: [], status: "active" };
-const request = (method: string, token?: string, body?: unknown) => new NextRequest("http://localhost:3000/api/admin/packages", { method, headers: { Origin: "http://localhost:3000", "Content-Type": "application/json", ...(token ? { Cookie: `travelmind_admin=${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+const request = (method: string, token?: string, body?: unknown) => new NextRequest("http://localhost:3000/api/admin/packages", { method, headers: { Origin: "http://localhost:3000", "Content-Type": "application/json", ...(token ? { Cookie: `travelmind_customer=${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
 
 beforeAll(async () => {
   if (!process.env.DATABASE_URL?.endsWith("/travelmind_admin_test")) throw new Error("Se requiere la base local exclusiva de test.");
   await migrate(db, { migrationsFolder: "./src/server/db/migrations" });
-  process.env.ADMIN_PASSWORD_HASH = `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
+  await db.insert(customers).values({ id: actor, username, role: "admin", passwordHash: `${salt}:${scryptSync(password, salt, 64).toString("hex")}` });
   await db.insert(destinations).values({ id: destinationId, name: "Destino demo", slug: `demo-${destinationId}`, region: "Demo", description: "Fixture académico", imageUrl: "/images/demo.jpg" });
 });
 afterAll(async () => {
@@ -33,7 +40,9 @@ afterAll(async () => {
     await db.delete(catalogDocuments).where(eq(catalogDocuments.packageId, id));
     await db.delete(packages).where(eq(packages.id, id));
   }
-  await db.delete(adminSessions);
+  await db.delete(customerSessions).where(eq(customerSessions.customerId, actor));
+  for (const id of visitors) await db.delete(visitorSessions).where(eq(visitorSessions.id, id));
+  await db.delete(customers).where(eq(customers.id, actor));
   await db.delete(destinations).where(eq(destinations.id, destinationId));
   await conn.end();
 });
@@ -46,27 +55,35 @@ describe("Administración con PostgreSQL real", () => {
     expect(result.status).toBe(401);
     expect((await result.json()).error).toHaveProperty("correlationId");
   });
-  it("revoca sesiones al salir y rechaza roles ajenos y sesiones vencidas", async () => {
+  it("usa roles actuales, ignora la cookie anterior y revoca la sesión común", async () => {
     const token = await login(password);
-    expect(await requireAdmin(token)).toBe(actor);
-    await logout(token);
-    await expect(requireAdmin(token)).rejects.toMatchObject({ status: 401 });
-    const other = "c".repeat(64);
-    await db.insert(adminSessions).values({ tokenHash: tokenHash(other), actor: "customer-demo", role: "customer", expiresAt: new Date(Date.now() + 60000) });
-    await expect(requireAdmin(other)).rejects.toMatchObject({ status: 403 });
-    expect((await GET(request("GET", other))).status).toBe(403);
-    await db.update(adminSessions).set({ role: "admin", expiresAt: new Date(0) }).where(eq(adminSessions.tokenHash, tokenHash(other)));
-    await expect(requireAdmin(other)).rejects.toMatchObject({ status: 401 });
+    expect((await GET(request("GET", token))).status).toBe(200);
+    await db.update(customers).set({ role: "customer" }).where(eq(customers.id, actor));
+    expect((await GET(request("GET", token))).status).toBe(403);
+    expect((await approvals(request("GET", token))).status).toBe(403);
+    await db.update(customers).set({ role: "approver" }).where(eq(customers.id, actor));
+    expect((await GET(request("GET", token))).status).toBe(403);
+    expect((await approvals(request("GET", token))).status).toBe(200);
+    await db.update(customers).set({ role: "admin" }).where(eq(customers.id, actor));
+    await signOut(request("DELETE", token));
+    expect((await GET(request("GET", token))).status).toBe(401);
+    const expired = await login(password);
+    await db.update(customerSessions).set({ expiresAt: new Date(0) }).where(eq(customerSessions.tokenHash, tokenHash(expired)));
+    expect((await GET(request("GET", expired))).status).toBe(401);
+    expect((await GET(new NextRequest("http://localhost:3000/api/admin/packages", { headers: { Cookie: `travelmind_admin=${token}` } }))).status).toBe(401);
   });
-  it("login HTTP usa cookie protegida y rechaza otro origen", async () => {
-    const result = await signIn(new NextRequest("https://localhost/api/admin/session", { method: "POST", headers: { Origin: "https://localhost", "Content-Type": "application/json" }, body: JSON.stringify({ password }) }));
-    expect(result.status).toBe(200);
+  it("login común devuelve el rol con cookie segura y no acepta privilegios del cliente", async () => {
+    const visitor = await createVisitor(); visitors.push(visitor.id);
+    const makeRequest = (origin: string, extra = {}) => new NextRequest("https://localhost/api/customer/session", { method: "POST", headers: { Origin: origin, "Content-Type": "application/json", Cookie: `travelmind_visitor=${visitor.token}` }, body: JSON.stringify({ action: "login", username, password, ...extra }) });
+    const result = await signIn(makeRequest("https://localhost"));
+    expect(result.status).toBe(200); expect((await result.json()).data.role).toBe("admin");
     const cookie = result.headers.get("set-cookie");
-    expect(cookie).toContain("HttpOnly");
-    expect(cookie).toContain("Secure");
-    expect(cookie?.toLowerCase()).toContain("samesite=strict");
-    const blocked = await signIn(new NextRequest("https://localhost/api/admin/session", { method: "POST", headers: { Origin: "https://example.test", "Content-Type": "application/json" }, body: JSON.stringify({ password }) }));
-    expect(blocked.status).toBe(403);
+    expect(cookie).toContain("HttpOnly"); expect(cookie).toContain("Secure"); expect(cookie?.toLowerCase()).toContain("samesite=strict");
+    const session = await accountSession(new NextRequest("https://localhost/api/customer/session", { headers: { Cookie: cookie!.split(";")[0] } }));
+    expect((await session.json()).data.role).toBe("admin");
+    expect((await signIn(makeRequest("https://example.test"))).status).toBe(403);
+    expect((await signIn(makeRequest("https://localhost", { action: "register", role: "admin" }))).status).toBe(400);
+    expect((await retiredLogin()).status).toBe(410);
   });
   it("crea por API y registra auditoría y una fuente aprobada sin precios", async () => {
     const token = await login(password);

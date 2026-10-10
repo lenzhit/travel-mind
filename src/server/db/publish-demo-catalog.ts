@@ -13,7 +13,7 @@ export async function publishDemoCatalog() {
   for (const { id } of rows) {
     await db.transaction(async tx => {
       const [row] = await tx.select().from(packages).where(eq(packages.id, id)).for("update");
-      if (row.status !== "active") return;
+      if (!row || row.status !== "active") return;
       const [existing] = await tx.select({ id: catalogDocuments.id }).from(catalogDocuments).where(eq(catalogDocuments.packageId, id)).limit(1);
       if (existing) return;
       const input = adminPackageSchema.parse({ destinationId: row.destinationId, title: row.title, slug: row.slug, description: row.description, durationDays: row.durationDays, category: row.category, basePriceMinor: row.basePriceMinor, currency: row.currency, inclusions: row.inclusions, exclusions: row.exclusions, itinerary: row.itinerary, status: row.status });

@@ -32,7 +32,7 @@ export function AdminCatalog() {
   }
   useEffect(() => {
     let active = true;
-    api("/api/admin/session").then(async () => {
+    Promise.resolve().then(async () => {
       const [items, places] = await Promise.all([api<Row[]>("/api/admin/packages?page=1"), api<Destination[]>("/api/destinations")]);
       if (active) { setAuthenticated(true); setRows(items); setDestinations(places); }
     }).catch((error: Error) => { if (active) setMessage(error.message); }).finally(() => { if (active) setBusy(false); });
@@ -47,19 +47,10 @@ export function AdminCatalog() {
 
   return <section aria-busy={busy} className="space-y-6">
     <p role="status" aria-live="polite" className="text-primary">{busy ? "Procesando solicitud…" : message}</p>
-    {!authenticated ? <form className="max-w-md space-y-4 rounded-lg border bg-surface p-6" onSubmit={(event) => {
-      event.preventDefault(); const form = event.currentTarget; const password = String(new FormData(form).get("password"));
-      void run(async () => { await api("/api/admin/session", "POST", { password }); form.reset(); await load(1); setAuthenticated(true); });
-    }}>
-      <h2 className="text-xl font-semibold">Acceso administrativo</h2>
-      <label className="block">Contraseña<input name="password" type="password" autoComplete="current-password" minLength={12} maxLength={256} required className={inputClass} /></label>
-      <Button disabled={busy}>Ingresar</Button>
-      <p className="text-sm text-muted-foreground">Ingresa para gestionar el catálogo. Tu sesión vence en una hora.</p>
-    </form> : <>
+    {authenticated && <>
       <div className="flex flex-wrap gap-3">
         <Button disabled={busy} onClick={(event) => { editTrigger.current = event.currentTarget; setEditing(null); }}>Nuevo paquete</Button>
         <Button variant="outline" disabled={busy} onClick={() => void run(async () => { await load(); setMessage("Catálogo actualizado."); })}>Recargar</Button>
-        <Button variant="outline" disabled={busy} onClick={() => void run(async () => { await api("/api/admin/session", "DELETE"); setAuthenticated(false); setRows([]); setEditing(undefined); setMessage("Sesión cerrada."); })}>Cerrar sesión</Button>
       </div>
       {editing !== undefined && <PackageEditor key={editing?.id ?? "new"} row={editing} destinations={destinations} busy={busy} onCancel={() => { setEditing(undefined); editTrigger.current?.focus(); }} onSave={(input) => void run(async () => {
         await api(editing ? `/api/admin/packages/${editing.id}` : "/api/admin/packages", editing ? "PATCH" : "POST", editing ? { ...input, expectedUpdatedAt: editing.updatedAt } : input);

@@ -1,0 +1,11 @@
+import { z } from "zod";
+export const acceptanceSchema = z.object({ acceptedVersion: z.number().int().positive().max(1000000), acceptedTotalMinor: z.number().int().nonnegative().max(2147483647), termsAccepted: z.literal(true) }).strict();
+export const reserveSchema = acceptanceSchema.extend({ quotationId: z.string().uuid(), travelerName: z.string().trim().min(2).max(80) }).strict();
+export const checkoutSchema = z.object({ reservationId: z.string().uuid() }).strict();
+export const mockPaymentSchema = z.object({ paymentId: z.string().uuid(), outcome: z.enum(["succeeded", "failed", "cancelled"]) }).strict();
+export const decisionSchema = z.object({ decision: z.enum(["approved", "rejected"]), reason: z.string().trim().min(5).max(500) }).strict();
+export type ReserveInput = z.infer<typeof reserveSchema>;
+export type AcceptanceInput = z.infer<typeof acceptanceSchema>;
+export const POLICY_VERSION = "mock-request-v1";
+export const POLICY_TEXT = "Esta operación es una prueba local. Las solicitudes de cambio o cancelación requieren revisión de un asesor en esta aplicación. No se contratan servicios turísticos externos ni se mueve dinero real.";
+export const SIMULATION_NOTICE = "SIMULACIÓN / NO SE REALIZÓ NINGÚN CARGO NI RESERVA EXTERNA";

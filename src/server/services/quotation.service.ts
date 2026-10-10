@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { packages, packageVariants, destinations, quotations, quotationVersions } from "@/server/db/schema";
 import type { QuoteInput } from "@/features/quotes/schemas";
@@ -36,7 +36,7 @@ export class QuotationService {
         await tx.update(quotations).set({ status: "expired" }).where(eq(quotations.id, id));
         quote.status = "expired";
       }
-      const [version] = await tx.select().from(quotationVersions).where(and(eq(quotationVersions.quotationId, id), eq(quotationVersions.version, 1)));
+      const [version] = await tx.select().from(quotationVersions).where(eq(quotationVersions.quotationId, id)).orderBy(desc(quotationVersions.version)).limit(1);
       if (!version) throw new AdminError("QUOTE_UNAVAILABLE", "No se pudo recuperar el desglose de la cotización.", 503);
       return { id: quote.id, status: quote.status, issuedAt: quote.issuedAt.toISOString(), expiresAt: quote.expiresAt.toISOString(), version: version.version, ...version.snapshot };
     });

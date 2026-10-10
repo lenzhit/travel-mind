@@ -60,3 +60,14 @@ Sin nuevas dependencias npm ni servicios remotos obligatorios. Presupuesto oblig
 | [nomic-embed-text:v1.5](https://ollama.com/library/nomic-embed-text:v1.5), [ficha oficial Nomic](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) | Embeddings locales 768 dimensiones, Apache-2.0; consulta oficial 2026-10-10 | Artefacto Ollama 274 MB; descarga inicial opcional, CPU/RAM y disco locales. Sin cuenta, tarjeta ni cobro por consulta | Fragmentos y búsqueda textual sobre documentos aprobados |
 
 APIs oficiales comprobadas: [Ollama chat](https://docs.ollama.com/api/chat) y [embed](https://docs.ollama.com/api/embed). Modelos fijados en código; no asumir licencias de otras variantes. Las pruebas no necesitan Ollama ni internet; pgvector y ranking se ejercitan con respuestas controladas. No se comprobó inferencia real, calidad ni consumo de hardware de los modelos.
+
+### Cambio fase 3 — 2026-10-10
+
+Sin nuevas dependencias npm. Reserva, pago, prueba de proveedor, HITL y WhatsApp se ejecutan localmente con las librerías existentes; no requieren cuentas, tarjetas, cuotas o red después de instalar. Pago mock no factura. No se habilitaron Stripe, Booking, SMTP remoto ni WhatsApp real.
+
+| Recurso | Propósito/licencia/términos | Red, límites y riesgo de cobro | Sustituto local |
+|---|---|---|---|
+| Mailpit v1.30.1, imagen `axllent/mailpit:v1.30.1` | Captura de mensajes local; [MIT verificada](https://github.com/axllent/mailpit/blob/v1.30.1/LICENSE), [API oficial](https://mailpit.axllent.org/docs/api-v1/); consulta 2026-10-10 | Descarga inicial, sin cuenta ni tarjeta; puertos solo loopback. Sin envío externo ni facturación automática. Disco/RAM del equipo; mensajes del contenedor efímeros al recrearlo. Adapter con timeout 2 s, tres intentos; límites de mantenimiento documentados | Outbox en PostgreSQL y vista de notificaciones; reserva consultable aunque Mailpit esté apagado |
+| n8n Community (export, instancia no ejecutada) | Orquestación interna; condiciones source-available ya registradas arriba, sin funciones Enterprise | No se agregó dependencia cloud ni credencial. Endpoint deshabilitado sin token local; importación JSON pendiente de verificación | `pnpm workflows:run`, misma lógica de backend |
+
+Presupuesto obligatorio de licencias/servicios/transacciones: USD 0. Los requisitos de Node/PostgreSQL existentes bastan para el recorrido determinista; Mailpit añade un contenedor ligero, cuyo límite práctico depende del equipo. No se midió capacidad productiva ni consumo máximo de recursos.

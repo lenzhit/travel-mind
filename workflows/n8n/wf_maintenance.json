@@ -1,0 +1,12 @@
+{
+  "name": "TravelMind local maintenance",
+  "active": false,
+  "nodes": [
+    { "parameters": {}, "id": "manual", "name": "Run locally", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [260, 300], "notes": "Ejecutar manualmente para procesar la cola local. No aprueba ni autoriza pagos." },
+    { "parameters": { "method": "POST", "url": "http://localhost:3000/api/internal/workflows/process", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "X-Correlation-Id", "value": "={{ $execution.id }}" }] }, "sendBody": false, "options": { "timeout": 30000, "redirect": { "redirect": { "followRedirects": false } }, "response": { "response": { "fullResponse": true, "neverError": false } } } }, "id": "next", "name": "Process recoverable events", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [560, 300], "credentials": { "httpHeaderAuth": { "name": "TravelMind local system" } }, "retryOnFail": false, "notes": "Configurar Authorization: Bearer con WORKFLOW_INTERNAL_TOKEN en la credencial local. Sin secretos en el export. Los reintentos de notificaciones (máximo 3) los controla Next.js; 4xx no se reintentan aquí. Si Next.js falla, la cola persiste y la ejecución queda fallida en n8n. localhost supone n8n y Next.js en el mismo host; configurar la URL local de acceso si n8n está en un contenedor." }
+  ],
+  "connections": { "Run locally": { "main": [[{ "node": "Process recoverable events", "type": "main", "index": 0 }]] } },
+  "settings": { "executionOrder": "v1", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "none" },
+  "pinData": {},
+  "meta": { "travelmind": "Artefacto local revisable; importación en n8n no ejecutada. Alternativa funcional: pnpm workflows:run." }
+}

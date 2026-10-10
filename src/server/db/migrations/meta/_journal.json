@@ -22,6 +22,20 @@
       "when": 1791654877177,
       "tag": "0002_ordinary_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791657705856,
+      "tag": "0003_free_ravenous",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791659985241,
+      "tag": "0004_long_firestar",
+      "breakpoints": true
     }
   ]
 }

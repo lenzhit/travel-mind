@@ -9,8 +9,14 @@ export function validateDepartureDate(value: string, now = new Date()) {
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value || value < today) throw new AdminError("INVALID_DATE", "Selecciona una fecha válida que no haya pasado.", 422);
 }
 export class MockTravelProvider {
+  constructor(private readonly bookingFailure = false) {}
   readonly name = "mock";
   readonly isMock = true;
+  createBooking(reservationId: string) {
+    if ((process.env.APP_MODE || "demo") !== "demo" || (process.env.TRAVEL_PROVIDER || "mock") !== "mock") throw new AdminError("PROVIDER_UNAVAILABLE", "El proveedor no está habilitado en este entorno.", 503);
+    if (this.bookingFailure || process.env.MOCK_TRAVEL_BOOKING_FAILURE === "true") throw new AdminError("PROVIDER_FAILED", "El proveedor no confirmó la reserva de prueba.", 503);
+    return { reference: `MOCK-${reservationId}`, provider: "mock", isMock: true as const };
+  }
   quote(pkg: PackageDetail, input: QuoteInput, now = new Date()): QuoteSnapshot {
     validateDepartureDate(input.departureDate, now);
     if ((process.env.APP_MODE || "demo") !== "demo" || (process.env.TRAVEL_PROVIDER || "mock") !== "mock") throw new AdminError("PROVIDER_UNAVAILABLE", "La cotización no está disponible en este entorno.", 503);
