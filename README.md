@@ -255,3 +255,9 @@ Verificación de acceso por roles: 52 pruebas unitarias/componentes y 29 de inte
 
 Mi cuenta incorpora Resumen operativo para el rol admin. Muestra conteos persistidos, estados y alertas locales con actualización manual, vacío, error y aviso de datos anteriores. Mantiene la administración integrada por roles. No añade proveedores, dependencias ni migraciones. Manual, criterios y límites: [docs/runbooks/operations.md](docs/runbooks/operations.md). API: GET `/api/admin/metrics`, contrato en `docs/openapi-phase4.json`.
 Verificación del incremento operativo: 56 pruebas unitarias/componentes y 30 de integración, lint, typecheck y build correctos; navegación con teclado y vista de 320 px comprobadas.
+
+## Pruebas de navegador y carga
+
+`pnpm test:e2e` compila y ejecuta cuatro recorridos en Chromium con una app en localhost:3100 y PostgreSQL exclusivo `travelmind_e2e_test`. Esa base es desechable y se limpia antes del seed y después de las operaciones de QA; no contiene datos del usuario. Incluye fallback, confirmación simulada, vencimiento, permisos, rechazo de aprobación e aislamiento entre cuentas. Tras la descarga inicial funciona sin servicios externos.
+
+`pnpm test:load` mide solo lecturas locales del catálogo de la app iniciada: 100 solicitudes, concurrencia 5, límites configurables. Informe con hardware y condiciones: [docs/testing/browser-and-load.md](docs/testing/browser-and-load.md), resultado JSON en `docs/testing/catalog-load-result.json`. No acredita capacidad de producción.

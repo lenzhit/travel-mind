@@ -1,0 +1,23 @@
+{
+  "measuredAt": "2026-10-10T20:16:27.482Z",
+  "mode": "demo",
+  "endpoint": "/api/packages?page=1&pageSize=12",
+  "sampleSize": 100,
+  "concurrency": 5,
+  "warmupRequests": 5,
+  "successes": 100,
+  "failures": 0,
+  "elapsedMs": 290,
+  "p50Ms": 13.45,
+  "p95Ms": 17.89,
+  "maxMs": 36.48,
+  "hardware": {
+    "cpu": "AMD Ryzen 5 5600H with Radeon Graphics",
+    "logicalCpus": 12,
+    "memoryGiB": 11,
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.4.1"
+  },
+  "scope": "Lectura local del catálogo; no mide IA, pagos, reservas ni capacidad productiva."
+}

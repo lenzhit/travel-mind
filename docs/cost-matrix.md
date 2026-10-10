@@ -71,3 +71,7 @@ Sin nuevas dependencias npm. Reserva, pago, prueba de proveedor, HITL y WhatsApp
 | n8n Community (export, instancia no ejecutada) | Orquestación interna; condiciones source-available ya registradas arriba, sin funciones Enterprise | No se agregó dependencia cloud ni credencial. Endpoint deshabilitado sin token local; importación JSON pendiente de verificación | `pnpm workflows:run`, misma lógica de backend |
 
 Presupuesto obligatorio de licencias/servicios/transacciones: USD 0. Los requisitos de Node/PostgreSQL existentes bastan para el recorrido determinista; Mailpit añade un contenedor ligero, cuyo límite práctico depende del equipo. No se midió capacidad productiva ni consumo máximo de recursos.
+
+### Verificación E2E local — 2026-10-10
+
+Admitido: `@playwright/test` 1.64.0, Apache-2.0 según [licencia oficial](https://github.com/microsoft/playwright/blob/main/LICENSE) y metadatos npm comprobados. Ejecuta navegador y runner locales; [instalación oficial](https://playwright.dev/docs/intro). USD 0: no exige registro, tarjeta, cuota cloud ni suscripción. Descarga inicial de paquetes y Chromium; después las pruebas usan únicamente loopback. El navegador tiene sus licencias y avisos distribuidos con el binario. Límites: CPU/RAM/disco locales, un worker por defecto, timeouts acotados. Sin facturación automática ni cuentas enlazadas. Alternativa sin navegador: Vitest/integración y `pnpm test:smoke`; no sustituye cobertura de UI. Los servicios reales permanecen deshabilitados.
