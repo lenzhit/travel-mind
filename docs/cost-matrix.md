@@ -75,3 +75,19 @@ Presupuesto obligatorio de licencias/servicios/transacciones: USD 0. Los requisi
 ### Verificación E2E local — 2026-10-10
 
 Admitido: `@playwright/test` 1.64.0, Apache-2.0 según [licencia oficial](https://github.com/microsoft/playwright/blob/main/LICENSE) y metadatos npm comprobados. Ejecuta navegador y runner locales; [instalación oficial](https://playwright.dev/docs/intro). USD 0: no exige registro, tarjeta, cuota cloud ni suscripción. Descarga inicial de paquetes y Chromium; después las pruebas usan únicamente loopback. El navegador tiene sus licencias y avisos distribuidos con el binario. Límites: CPU/RAM/disco locales, un worker por defecto, timeouts acotados. Sin facturación automática ni cuentas enlazadas. Alternativa sin navegador: Vitest/integración y `pnpm test:smoke`; no sustituye cobertura de UI. Los servicios reales permanecen deshabilitados.
+
+### Operación y retención — 2026-10-11
+Sin nuevas dependencias ni servicios. Cola de incidencias y limpieza por lotes implementadas con PostgreSQL/Drizzle existentes. Ejecución local, sin cuentas cloud, cuotas comerciales, tarjeta ni transacciones reales. Conserva el ledger y usa límites de 100 registros por categoría y ejecución.
+
+Atención por roles — 2026-10-11: asignación, notas y cierre local usan PostgreSQL/Drizzle/Zod ya admitidos. Sin dependencia nueva, cuenta externa, mensajes comerciales ni cobros. Límite de 100 decisiones por caso y motivos de 500 caracteres.
+
+### Servicios locales verificados — 2026-10-11
+
+| Recurso y propósito | Licencia / referencia oficial | Requisitos y límites comprobados | Red, cobro y sustituto |
+|---|---|---|---|
+| `n8nio/n8n:2.42.6`, orquestación interna | [Sustainable Use License](https://docs.n8n.io/sustainable-use-license/) fair-code; [instalación Compose](https://docs.n8n.io/deploy/host-n8n/install-options/install-using-docker-compose/) | Imagen versionada, editor solo en `127.0.0.1:5678`, volumen local persistente. Flujo importado, ejecutado manualmente y publicado cada cinco minutos en la instancia local con autorización explícita. No se usan funciones Enterprise ni n8n Cloud. | Descarga inicial de imagen; sin registro, tarjeta, cuota de ejecuciones cloud ni facturación automática. Sustituto: `pnpm workflows:run`. |
+| `ollama/ollama:0.40.3`, inferencia/embeddings CPU | [Ollama MIT](https://github.com/ollama/ollama/blob/main/LICENSE); [imagen oficial](https://hub.docker.com/r/ollama/ollama/tags) | Imagen versionada, puerto `127.0.0.1:11434`, volumen local. En esta máquina WSL: 11 GiB RAM, 12 CPU visibles, 898 GiB libres al iniciar. La imagen comprimida AMD64 indicada por Docker Hub ronda 3.52 GB; se descargó localmente. | Red solo para descarga inicial; sin cuenta, tarjeta o coste por token. Sustituto: recomendación determinista. No implica capacidad productiva. |
+| `qwen2.5:1.5b-instruct-q4_1`, ranking acotado | [Licencia Apache-2.0 del artefacto](https://ollama.com/library/qwen2.5%3A1.5b-instruct-q4_1/blobs/832dd9e00a68) | Artefacto local ~1 GB; una inferencia breve y una recomendación con fuentes comprobadas en CPU. Timeout configurable, máximo 30 s; fallback determinista. | Descarga inicial gratuita sin registro ni tarjeta; no proveedor de pago. |
+| `nomic-embed-text:v1.5`, vectores 768D | [Ficha del modelo Apache-2.0](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5), [artefacto Ollama](https://ollama.com/library/nomic-embed-text/tags) | ~274 MB; 20 chunks aprobados indexados localmente. | Descarga inicial gratuita; búsqueda de catálogo sin vector disponible como fallback. |
+
+La configuración usa únicamente loopback; n8n alcanza Next.js mediante el puente local de Docker. `WORKFLOW_INTERNAL_TOKEN` se genera en archivos ignorados por Git. El consumo de CPU, RAM, disco y electricidad del equipo no forma parte del cálculo USD 0 de servicios, como define `AGENTS.md`. Se verificaron fuentes oficiales en la fecha indicada; reevaluar condiciones antes de otro uso.

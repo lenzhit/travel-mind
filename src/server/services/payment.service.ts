@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/server/db";
 import { mockInventory, paymentEvents, payments, providerBookingAttempts, reservations } from "@/server/db/schema";
 import { mockPaymentProvider, MockPaymentProvider, type MockPaymentEvent } from "@/server/providers/mock-payment-provider";
@@ -65,12 +65,17 @@ export class PaymentService {
   async reconcileRefund(customerId: string, id: string) {
     return db.transaction(async tx => {
       const reservation = await ownedReservation(tx, customerId, id);
-      if (reservation.status !== "refund_pending") return;
-      const [payment] = await tx.select().from(payments).where(and(eq(payments.reservationId, id), eq(payments.status, "succeeded"), eq(payments.refundStatus, "pending"))).for("update");
-      if (!payment) throw new AdminError("REFUND_UNVERIFIED", "La resolución necesita revisión manual.", 409);
-      await tx.update(payments).set({ refundStatus: "refunded" }).where(eq(payments.id, payment.id));
-      await tx.insert(paymentEvents).values({ id: `refunded-${payment.id}`, paymentId: payment.id, type: "refund_simulated" });
+      if (reservation.status !== "refund_pending") return false;
+      const verified = await tx.select().from(payments).where(and(eq(payments.reservationId, id), eq(payments.status, "succeeded"))).for("update");
+      if (!verified.length || verified.some(payment => payment.refundStatus !== "pending")) throw new AdminError("REFUND_UNVERIFIED", "La resolución necesita revisión manual.", 409);
+      const verifiedEvents = await tx.select({ paymentId: paymentEvents.paymentId }).from(paymentEvents).where(and(inArray(paymentEvents.paymentId, verified.map(payment => payment.id)), eq(paymentEvents.type, "succeeded")));
+      if (verified.some(payment => !verifiedEvents.some(event => event.paymentId === payment.id))) throw new AdminError("REFUND_UNVERIFIED", "Falta el evento verificado del pago simulado.", 409);
+      for (const payment of verified) {
+        await tx.update(payments).set({ refundStatus: "refunded" }).where(eq(payments.id, payment.id));
+        await tx.insert(paymentEvents).values({ id: `refunded-${payment.id}`, paymentId: payment.id, type: "refund_simulated" }).onConflictDoNothing();
+      }
       await changeStatus(tx, reservation, "refunded", "mock-payment");
+      return true;
     });
   }
 }

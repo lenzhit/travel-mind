@@ -24,7 +24,7 @@ export async function recommend(input: ChatInput): Promise<ChatResult> {
   if (!eligible.length || requestedUnknown) return { message: "No encontré opciones que cumplan tus preferencias. Puedes ajustar el destino o el presupuesto.", recommendations: [], questions, mode: "deterministic", retrieval: "catalog", preferences };
   const chunks = await db.select().from(ragChunks).where(inArray(ragChunks.documentId, eligible.map(row => row.doc.id)));
   let queryVector: number[] | undefined;
-  if (chunks.some(chunk => chunk.embeddingModel === EMBEDDING_MODEL && chunk.embedding)) { try { queryVector = await embed(input.message, "query"); } catch { /* deterministic fallback */ } }
+  if (chunks.some(chunk => chunk.embeddingModel === EMBEDDING_MODEL && chunk.embedding)) { try { queryVector = await embed(input.message, "query"); } catch (error) { console.warn(JSON.stringify({ event: "ai_fallback", stage: "embed", cause: error instanceof Error ? error.name : "unknown" })); } }
   const semanticScores = new Map<string, number>();
   if (queryVector) {
     const distance = cosineDistance(ragChunks.embedding, queryVector);
@@ -42,7 +42,7 @@ export async function recommend(input: ChatInput): Promise<ChatResult> {
   if (!place && !ranked.some(row => row.score > (queryVector ? 0.35 : 0))) return { message: "¿Qué destino de nuestro catálogo deseas conocer? Puedes explorar los paquetes para elegirlo.", recommendations: [], questions, mode: "deterministic", retrieval: queryVector ? "semantic" : "catalog", preferences };
   let selected = ranked.slice(0, 3);
   let mode: ChatResult["mode"] = "deterministic";
-  try { const ids = await rankPackages(input.message, ranked.map(row => ({ id: row.pkg.id, content: row.best.chunk.content }))); selected = ids.map(id => ranked.find(row => row.pkg.id === id)!); mode = "ollama"; } catch { /* validated catalog remains available */ }
+  try { const ids = await rankPackages(input.message, ranked.map(row => ({ id: row.pkg.id, content: row.best.chunk.content }))); selected = ids.map(id => ranked.find(row => row.pkg.id === id)!); mode = "ollama"; } catch (error) { console.warn(JSON.stringify({ event: "ai_fallback", stage: "rank", cause: error instanceof Error ? error.name : "unknown" })); }
   // Recheck publication after model latency: an edited/withdrawn source cannot be returned.
   const current = await db.select({ id: catalogDocuments.id }).from(catalogDocuments).innerJoin(packages, eq(catalogDocuments.packageId, packages.id)).innerJoin(destinations, eq(packages.destinationId, destinations.id)).where(and(inArray(catalogDocuments.id, selected.map(row => row.doc.id)), eq(catalogDocuments.status, "approved"), eq(catalogDocuments.acl, "public"), eq(catalogDocuments.language, "es-PE"), eq(packages.status, "active"), eq(destinations.status, "active")));
   selected = selected.filter(row => current.some(doc => doc.id === row.doc.id));

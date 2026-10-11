@@ -18,7 +18,7 @@ it("muestra/oculta contraseña sin perderla ni enviar el formulario", async () =
 });
 it("un fallo de conexión permite reintentar sin fingir sesión cerrada", async () => {
   mocks.request.mockRejectedValueOnce(new Error("offline")); render(<AccountPage />);
-  expect(await screen.findByRole("alert")).toHaveFocus();
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
   expect(screen.queryByRole("form")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Volver a intentar" }));
   await screen.findByRole("form", { name: "Iniciar sesión" });

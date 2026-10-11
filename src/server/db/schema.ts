@@ -245,6 +245,8 @@ export const mockInventory = pgTable("mock_inventory", {
 export const reservations = pgTable("reservations", {
   id: uuid("id").defaultRandom().primaryKey(),
   customerId: uuid("customer_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  caseUpdatedAt: timestamp("case_updated_at", { withTimezone: true }),
+  caseAssigneeId: uuid("case_assignee_id").references(() => customers.id, { onDelete: "restrict" }),
   quotationId: uuid("quotation_id").notNull().unique().references(() => quotations.id, { onDelete: "restrict" }),
   quoteVersion: integer("quote_version").notNull(),
   status: varchar("status", { length: 30 }).notNull(),
@@ -326,3 +328,17 @@ export const notificationDeliveries = pgTable("notification_deliveries", {
   nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
   providerReference: varchar("provider_reference", { length: 100 }),
 }, table => [uniqueIndex("notification_event_channel_idx").on(table.eventId, table.channel)]);
+
+export const caseActions = pgTable("case_actions", {
+  assigneeId: uuid("assignee_id").references(() => customers.id, { onDelete: "restrict" }),
+  id: uuid("id").defaultRandom().primaryKey(),
+  reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),
+  actorId: uuid("actor_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  action: varchar("action", { length: 30 }).notNull(),
+  reason: varchar("reason", { length: 500 }).notNull(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  payloadHash: varchar("payload_hash", { length: 64 }).notNull(),
+  resultStatus: varchar("result_status", { length: 30 }).notNull(),
+  correlationId: uuid("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("case_action_key_idx").on(table.reservationId, table.idempotencyKey), index("case_actions_reservation_idx").on(table.reservationId, table.createdAt), check("case_action_type", sql`${table.action} IN ('assign', 'note', 'close_unpaid', 'cancel_unverified', 'request_mock_refund')`)]);

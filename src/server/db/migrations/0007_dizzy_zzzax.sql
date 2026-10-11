@@ -1,0 +1,2 @@
+ALTER TABLE "case_actions" DROP CONSTRAINT "case_action_type";--> statement-breakpoint
+ALTER TABLE "case_actions" ADD CONSTRAINT "case_action_type" CHECK ("case_actions"."action" IN ('assign', 'note', 'close_unpaid', 'cancel_unverified'));

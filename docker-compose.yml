@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,6 +26,51 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  n8n:
+    image: n8nio/n8n:2.42.6
+    container_name: travelmind-n8n
+    restart: unless-stopped
+    env_file:
+      - path: .env.n8n.local
+        required: false
+    environment:
+      GENERIC_TIMEZONE: America/Lima
+      TZ: America/Lima
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      # Solo en la instancia interna local: la expresión HTTP necesita el token acotado.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_TEMPLATES_ENABLED: "false"
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_ERROR: none
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "168"
+    ports:
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows/n8n:/workflows:ro
+
+  ollama:
+    image: ollama/ollama:0.40.3
+    profiles: ["ai"]
+    container_name: travelmind-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: "2"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: "0"
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
 volumes:
   postgres_data:
     name: travelmind_postgres_data
+  n8n_data:
+    name: travelmind_n8n_data
+  ollama_data:
+    name: travelmind_ollama_data

@@ -41,6 +41,8 @@ TravelMind automatiza el ciclo de vida de atención turística B2C (consulta sem
 
 ## 4. Instalación y Puesta en Marcha
 
+Estado verificado del MVP y pendientes: [auditoría del 2026-10-11](docs/mvp-audit-2026-10-11.md). Los pagos y las reservas son simulados; el flujo completo no requiere cuentas comerciales.
+
 ### 4.1 Clonar el repositorio
 ```bash
 git clone <url-del-repositorio>
@@ -57,11 +59,12 @@ cp .env.example .env.local
 ### 4.3 Instalar dependencias
 ```bash
 pnpm install
+pnpm workflows:setup
 ```
 
-### 4.4 Levantar PostgreSQL local con pgvector (Docker Compose)
+### 4.4 Levantar PostgreSQL, Mailpit y n8n locales
 ```bash
-docker compose up -d
+docker compose up -d postgres mailpit n8n
 ```
 
 ### 4.5 Ejecutar migraciones y seed de catálogo demostrativo
@@ -71,13 +74,25 @@ pnpm db:migrate
 
 # Cargar catálogo de 14 experiencias demostrativas en Perú
 pnpm db:seed
+pnpm rag:index
 ```
 
 ### 4.6 Iniciar el servidor de desarrollo
 ```bash
-pnpm dev
+pnpm dev --hostname 127.0.0.1
 ```
 La aplicación estará disponible en [http://localhost:3000](http://localhost:3000) y el catálogo en [http://localhost:3000/packages](http://localhost:3000/packages).
+
+Para recomendaciones con modelos locales, opcionalmente iniciar Ollama y descargar los dos artefactos gratuitos antes de reindexar:
+
+```bash
+docker compose --profile ai up -d ollama
+docker exec travelmind-ollama ollama pull qwen2.5:1.5b-instruct-q4_1
+docker exec travelmind-ollama ollama pull nomic-embed-text:v1.5
+pnpm rag:index --embed
+```
+
+El flujo n8n de mantenimiento se importa con `docker exec travelmind-n8n n8n import:workflow --input=/workflows/wf_maintenance.json`. En la instancia local de este proyecto quedó **publicado y activo cada cinco minutos** tras autorización explícita; los pasos de activación para una instalación nueva están en [operación local](docs/runbooks/operations.md). El fallback determinista y `pnpm workflows:run` permiten la demostración sin Ollama ni n8n.
 
 ---
 
@@ -242,7 +257,7 @@ Verificación del 2026-10-10: `pnpm test` (29 pruebas), `pnpm test:integration` 
 
 Verificación fase 2 (2026-10-10): 39 pruebas unitarias/componentes y 16 de integración exitosas; lint, typecheck y build correctos. Recorrido de navegador recomendación → fuente → cotización comprobado con teclado y a 320 px. Migración 0002 aplicada localmente; rollback y reaplicación probados solo en la base de test. Contrato OpenAPI disponible en docs/openapi-phase2.json. Inferencia real con Ollama pendiente de instalar los modelos; fallback determinista operativo.
 
-Fase 3 implementada: cuenta de cliente, reserva privada con revalidación/consentimiento, HITL para total > USD 2000, pago local con evento verificado, comprobante del proveedor mock, reversión pendiente y notificaciones recuperables. [Manual de reservas y pagos](docs/reservations-payments.md). Mailpit local se inicia con `docker compose up -d mailpit`; `pnpm workflows:run` procesa la cola y las reversiones. El export n8n está disponible pero su importación/ejecución no fue comprobada. No hay cargos ni reservas externas. Siguiente fase: operación, métricas, alertas y robustez.
+Fase 3 implementada: cuenta de cliente, reserva privada con revalidación/consentimiento, HITL para total > USD 2000, pago local con evento verificado, comprobante del proveedor mock, reversión pendiente y notificaciones recuperables. [Manual de reservas y pagos](docs/reservations-payments.md). Mailpit local se inicia con `docker compose up -d mailpit`; `pnpm workflows:run` procesa la cola y las reversiones. La importación y ejecución local de n8n se comprobaron después; su estado actual está en la [auditoría del MVP](docs/mvp-audit-2026-10-11.md). No hay cargos ni reservas externas. Siguiente fase: operación, métricas, alertas y robustez.
 
 Verificación fase 3 (2026-10-10): 44 pruebas unitarias/componentes y 29 de integración correctas; lint, typecheck y build exitosos. `pnpm test:smoke` verifica el recorrido HTTP contra la app local y deja registros ficticios de QA; navegador validado desde cotización hasta confirmación de prueba, con aceptación por teclado y reserva a 320 px sin desbordamiento. Mailpit recibió los mensajes de los recorridos locales. Migración 0003 aplicada; rollback/reaplicación comprobados solo en la base desechable de tests. Contrato OpenAPI: docs/openapi-phase3.json. La revisión de accesibilidad fue puntual; no se ejecutaron Playwright ni n8n.
 
@@ -261,3 +276,7 @@ Verificación del incremento operativo: 56 pruebas unitarias/componentes y 30 de
 `pnpm test:e2e` compila y ejecuta cuatro recorridos en Chromium con una app en localhost:3100 y PostgreSQL exclusivo `travelmind_e2e_test`. Esa base es desechable y se limpia antes del seed y después de las operaciones de QA; no contiene datos del usuario. Incluye fallback, confirmación simulada, vencimiento, permisos, rechazo de aprobación e aislamiento entre cuentas. Tras la descarga inicial funciona sin servicios externos.
 
 `pnpm test:load` mide solo lecturas locales del catálogo de la app iniciada: 100 solicitudes, concurrencia 5, límites configurables. Informe con hardware y condiciones: [docs/testing/browser-and-load.md](docs/testing/browser-and-load.md), resultado JSON en `docs/testing/catalog-load-result.json`. No acredita capacidad de producción.
+
+Operación de incidencias: desde **Mi cuenta → Incidencias de reservas**, con rol admin. Consultar [operación local](docs/runbooks/operations.md) y [retención de datos](docs/runbooks/data-retention.md). La cola permite consulta paginada, asignación y atención acotada por roles. `pnpm workflows:run` aplica la retención y las reversiones simuladas verificadas.
+
+La atención de incidencias admite asignación por admin y acciones por el agente asignado. Permite notas y cierre de revisiones por cambio de tarifa sin pagos pendientes/verificados; no habilita confirmaciones forzadas. Aplicar las migraciones locales con pnpm db:migrate.

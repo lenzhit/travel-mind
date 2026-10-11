@@ -1761,6 +1761,279 @@
         }
       }
     },
+    "/api/admin/cases/{id}": {
+      "post": {
+        "operationId": "actOnCase",
+        "security": [
+          {
+            "CustomerCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Debe coincidir con el origen de la URL de solicitud"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado autorizado; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CaseActionResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Admin asigna a travel_agent; admin y agente asignado anotan, cierran revisiones sin pago, cancelan importes nunca verificados o solicitan reversión simulada de pagos verificados sin prueba de proveedor. Bloqueo, evidencia, estado esperado e idempotencia. Nunca confirma ni cobra."
+      }
+    },
+    "/api/admin/cases": {
+      "get": {
+        "operationId": "readOperationCases",
+        "description": "Admin consulta todos; travel_agent solo casos asignados. Incluye notas autorizadas sin credenciales de sesión.",
+        "security": [
+          {
+            "CustomerCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado autorizado; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OperationCases"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/metrics": {
       "get": {
         "operationId": "readOperationalMetrics",
@@ -3239,11 +3512,271 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "refundsReconciled": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "refundsNeedsReview": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "expiredAccountSessions": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "expiredLegacySessions": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "expiredVisitors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "anonymizedTravelers": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "expiredAccountSessions",
+              "expiredLegacySessions",
+              "expiredVisitors",
+              "anonymizedTravelers"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
           "checked",
-          "completed"
+          "completed",
+          "refundsReconciled",
+          "refundsNeedsReview",
+          "retention"
+        ],
+        "additionalProperties": false
+      },
+      "CaseAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "const": "assign"
+              },
+              "assignee": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 32
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "expectedUpdatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "action",
+              "assignee",
+              "reason",
+              "expectedUpdatedAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "note",
+                  "close_unpaid",
+                  "cancel_unverified",
+                  "request_mock_refund"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "expectedUpdatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "action",
+              "reason",
+              "expectedUpdatedAt"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CaseActionResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "OperationCases": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "packageTitle": {
+                  "type": "string"
+                },
+                "totalMinor": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "currency": {
+                  "type": "string",
+                  "const": "USD"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "assignee": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "history": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "reason",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "payments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string"
+                      },
+                      "refundStatus": {
+                        "type": "string"
+                      },
+                      "totalMinor": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "refundStatus",
+                      "totalMinor"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "reason",
+                "packageTitle",
+                "totalMinor",
+                "currency",
+                "updatedAt",
+                "assignee",
+                "history",
+                "payments"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true
+          },
+          "canAssign": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "hasMore",
+          "simulated",
+          "canAssign"
         ],
         "additionalProperties": false
       },

@@ -3128,11 +3128,56 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "refundsReconciled": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "refundsNeedsReview": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "expiredAccountSessions": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "expiredLegacySessions": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "expiredVisitors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "anonymizedTravelers": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "expiredAccountSessions",
+              "expiredLegacySessions",
+              "expiredVisitors",
+              "anonymizedTravelers"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
           "checked",
-          "completed"
+          "completed",
+          "refundsReconciled",
+          "refundsNeedsReview",
+          "retention"
         ],
         "additionalProperties": false
       }
