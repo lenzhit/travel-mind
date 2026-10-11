@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/server/db";
-import { approvalRequests, notificationDeliveries, payments, quotations, reservations, workflowOutbox } from "@/server/db/schema";
+import { approvalRequests, consultationRuns, notificationDeliveries, payments, quotations, reservations, workflowOutbox } from "@/server/db/schema";
 import { operationalMetricsSchema } from "@/features/analytics/schemas";
 
 // Una sola sentencia conserva una instantánea coherente. No trae filas con PII.
@@ -15,6 +15,18 @@ export async function readOperationalMetrics(correlationId?: string) {
       'pendingApprovals', (SELECT count(*) FROM ${approvalRequests} WHERE ${approvalRequests.status} = 'pending' AND ${approvalRequests.expiresAt} > now())
     ),
     'states', COALESCE((SELECT jsonb_agg(summary ORDER BY summary.status) FROM (SELECT ${reservations.status} AS status, count(*) AS count FROM ${reservations} GROUP BY ${reservations.status}) summary), '[]'::jsonb),
+    'cohort', jsonb_build_object(
+      'windowDays', 7,
+      'consultedSessions', (SELECT count(DISTINCT ${consultationRuns.sessionId}) FROM ${consultationRuns} WHERE ${consultationRuns.createdAt} >= now() - interval '7 days'),
+      'confirmedSessions', (SELECT count(DISTINCT ${quotations.sessionId}) FROM ${reservations}
+        INNER JOIN ${quotations} ON ${quotations.id} = ${reservations.quotationId}
+        WHERE ${reservations.status} = 'confirmed_demo' AND EXISTS (
+          SELECT 1 FROM ${consultationRuns}
+          WHERE ${consultationRuns.sessionId} = ${quotations.sessionId}
+            AND ${consultationRuns.createdAt} >= now() - interval '7 days'
+            AND ${consultationRuns.createdAt} <= ${reservations.createdAt}
+        ))
+    ),
     'alerts', jsonb_build_object(
       'refundPending', (SELECT count(*) FROM ${reservations} WHERE ${reservations.status} = 'refund_pending'),
       'manualReview', (SELECT count(*) FROM ${reservations} WHERE ${reservations.status} = 'manual_review'),

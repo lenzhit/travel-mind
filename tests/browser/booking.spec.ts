@@ -1,9 +1,12 @@
 import "./environment";
 import { test, expect, type Page } from "@playwright/test";
-import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { randomBytes, randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { db, conn } from "./db";
-import { customers, paymentEvents, payments, quotations, reservations } from "../../src/server/db/schema";
+import { customerSessions, customers, mockInventory, notificationDeliveries, notificationRetryActions, packages, paymentEvents, payments, quotationVersions, quotations, reservationConsents, reservationEvents, reservations, visitorSessions, workflowOutbox } from "../../src/server/db/schema";
+import { paymentService } from "../../src/server/services/payment.service";
+import { createVisitor, VISITOR_SECONDS } from "../../src/server/services/visitor-session";
+import { tokenHash } from "../../src/server/services/admin-auth";
 import { TEST_ORIGIN } from "./environment";
 const password = "fixture-browser-local";
 test.beforeEach(async ({ context }) => {
@@ -19,6 +22,17 @@ async function register(page: Page) {
   await page.getByLabel("Confirmar contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Crear mi cuenta", exact: true }).press("Enter");
   await expect(page).toHaveURL(/\/reservations$/);
+  return username;
+}
+async function provisionCustomerSession(page: Page) {
+  // El navegador ya cubre registro en los otros casos; este fixture evita agotar el límite de diez altas/minuto.
+  const visitor = await createVisitor();
+  const username = `e2e_${randomUUID().slice(0, 8)}`;
+  const [customer] = await db.insert(customers).values({ username, passwordHash: "fixture-not-used" }).returning();
+  const token = randomBytes(32).toString("hex");
+  await db.update(visitorSessions).set({ customerId: customer.id }).where(eq(visitorSessions.id, visitor.id));
+  await db.insert(customerSessions).values({ tokenHash: tokenHash(token), customerId: customer.id, visitorId: visitor.id, expiresAt: new Date(Date.now() + VISITOR_SECONDS * 1000) });
+  await page.context().addCookies([{ name: "travelmind_visitor", value: visitor.token, url: TEST_ORIGIN }, { name: "travelmind_customer", value: token, url: TEST_ORIGIN }]);
   return username;
 }
 async function recommendAndQuote(page: Page, travelers = 1) {
@@ -58,6 +72,63 @@ test("recorrido con fallback, cotización, consentimiento y confirmación simula
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("confirmacion-movil.png"), fullPage: true });
 });
+
+test("cancelar el pago simulado permite reintentar sin confirmar proveedor", async ({ page }) => {
+  await register(page); await recommendAndQuote(page); const id = await reserve(page);
+  await page.getByRole("button", { name: "Continuar al pago de prueba", exact: true }).press("Enter");
+  await expect(page.getByRole("button", { name: "Cancelar intento", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar intento", exact: true }).press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Listo para pagar" })).toBeVisible();
+  const [row] = await db.select().from(reservations).where(eq(reservations.id, id));
+  const attempts = await db.select().from(payments).where(eq(payments.reservationId, id));
+  expect(row.providerReference).toBeNull();
+  expect(attempts.map(attempt => attempt.status)).toEqual(["cancelled"]);
+});
+
+test("pago verificado sin inventario termina en reversión simulada, nunca confirmado", async ({ page }) => {
+  await register(page); await recommendAndQuote(page); const id = await reserve(page);
+  await page.getByRole("button", { name: "Continuar al pago de prueba", exact: true }).press("Enter");
+  await expect(page.getByRole("button", { name: "Autorizar pago de prueba", exact: true })).toBeVisible();
+  const [reservation] = await db.select().from(reservations).where(eq(reservations.id, id));
+  const [quote] = await db.select().from(quotationVersions).where(and(eq(quotationVersions.quotationId, reservation.quotationId), eq(quotationVersions.version, reservation.quoteVersion)));
+  const [inventory] = await db.select().from(mockInventory).where(and(eq(mockInventory.packageId, quote.snapshot.packageId), eq(mockInventory.departureDate, quote.snapshot.departureDate)));
+  expect(inventory).toBeDefined();
+  try {
+    await db.update(mockInventory).set({ remaining: 0 }).where(eq(mockInventory.id, inventory.id));
+    await page.getByRole("button", { name: "Autorizar pago de prueba", exact: true }).press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "Reversión de prueba pendiente" })).toBeVisible();
+    expect((await db.select().from(reservations).where(eq(reservations.id, id)))[0].providerReference).toBeNull();
+    await paymentService.reconcileRefund(reservation.customerId, id);
+    await page.getByRole("button", { name: "Actualizar estado", exact: true }).press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "Reversión de prueba completada" })).toBeVisible();
+    expect((await db.select().from(payments).where(eq(payments.reservationId, id)))[0]).toMatchObject({ status: "succeeded", refundStatus: "refunded" });
+  } finally {
+    await db.update(mockInventory).set({ remaining: inventory.remaining }).where(eq(mockInventory.id, inventory.id));
+  }
+});
+
+test("admin reabre desde la interfaz una entrega de correo agotada y deja auditoría", async ({ page }) => {
+  const username = await register(page); await recommendAndQuote(page); const id = await reserve(page);
+  const [event] = await db.select().from(reservationEvents).where(eq(reservationEvents.reservationId, id));
+  const [delivery] = await db.insert(notificationDeliveries).values({ reservationId: id, eventId: event.id, channel: "email", status: "failed", attempts: 3, body: "Mensaje ficticio no entregado" }).returning();
+  await db.update(workflowOutbox).set({ status: "completed" }).where(eq(workflowOutbox.eventId, event.id));
+  await page.goto("/account/notifications");
+  await expect(page).toHaveURL(/\/account$/);
+  await db.update(customers).set({ role: "admin" }).where(eq(customers.username, username));
+  await page.goto("/account/operations");
+  await page.getByRole("link", { name: "Entregas agotadas" }).press("Enter");
+  await expect(page.getByRole("heading", { name: "Entregas agotadas" })).toBeVisible();
+  await expect(page.getByText(`Solicitud: ${id}`, { exact: true })).toBeVisible();
+  await page.getByLabel("Motivo de reintento").fill("Mailpit local restaurado y bandeja comprobada");
+  await page.getByRole("checkbox", { name: /He comprobado la bandeja local/ }).check();
+  await page.getByRole("button", { name: "Reabrir entrega" }).press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Entrega reabierta" })).toBeVisible();
+  expect((await db.select().from(notificationDeliveries).where(eq(notificationDeliveries.id, delivery.id)))[0]).toMatchObject({ status: "pending", attempts: 0 });
+  expect((await db.select().from(workflowOutbox).where(eq(workflowOutbox.eventId, event.id)))[0].status).toBe("pending");
+  expect(await db.select().from(notificationRetryActions).where(eq(notificationRetryActions.deliveryId, delivery.id))).toHaveLength(1);
+  await page.setViewportSize({ width: 320, height: 780 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
 test("cotización vencida impide solicitar reserva en la interfaz", async ({ page }) => {
   await register(page); const quoteId = await recommendAndQuote(page);
   const issuedAt = new Date(Date.now() - 48 * 3600000);
@@ -66,6 +137,31 @@ test("cotización vencida impide solicitar reserva en la interfaz", async ({ pag
   await expect(page.getByRole("heading", { name: "Actualiza tu cotización" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Revisar disponibilidad y precio" })).toHaveCount(0);
   expect(await db.select().from(reservations).where(eq(reservations.quotationId, quoteId))).toHaveLength(0);
+});
+
+test("cambio de tarifa obliga a aceptar el nuevo total antes de crear reserva", async ({ page }) => {
+  await provisionCustomerSession(page);
+  const quoteId = await recommendAndQuote(page);
+  const [original] = await db.select().from(quotationVersions).where(eq(quotationVersions.quotationId, quoteId));
+  const [pkg] = await db.select().from(packages).where(eq(packages.id, original.snapshot.packageId));
+  try {
+    await db.update(packages).set({ basePriceMinor: pkg.basePriceMinor + 100, updatedAt: new Date() }).where(eq(packages.id, pkg.id));
+    await page.getByRole("button", { name: "Revisar disponibilidad y precio", exact: true }).press("Enter");
+    await expect.poll(async () => (await db.select().from(quotationVersions).where(eq(quotationVersions.quotationId, quoteId))).length).toBe(2);
+    const versions = await db.select().from(quotationVersions).where(eq(quotationVersions.quotationId, quoteId));
+    const revised = versions.find(version => version.version === 2)!;
+    expect(revised.snapshot.totalMinor).toBe(original.snapshot.totalMinor + 100 * original.snapshot.travelers);
+    await expect(page.getByText(`Total vigente: ${new Intl.NumberFormat("es-PE", { style: "currency", currency: "USD" }).format(revised.snapshot.totalMinor / 100)}`)).toBeVisible();
+    await page.getByLabel("Nombre del responsable").fill("Responsable ficticio E2E");
+    await page.getByRole("checkbox", { name: "Acepto este total y las condiciones de la solicitud." }).check();
+    await page.getByRole("button", { name: "Aceptar y solicitar reserva", exact: true }).press("Enter");
+    await expect(page).toHaveURL(/\/reservations\/[a-f0-9-]+$/);
+    const id = page.url().split("/").at(-1)!;
+    expect((await db.select().from(reservations).where(eq(reservations.id, id)))[0].quoteVersion).toBe(2);
+    expect((await db.select().from(reservationConsents).where(eq(reservationConsents.reservationId, id)))[0].totalMinor).toBe(revised.snapshot.totalMinor);
+  } finally {
+    await db.update(packages).set({ basePriceMinor: pkg.basePriceMinor, updatedAt: pkg.updatedAt }).where(eq(packages.id, pkg.id));
+  }
 });
 test("cuenta aplica roles, asignación y cierre seguro de incidencias", async ({ page, context, browser }) => {
   const username = await register(page);
@@ -175,7 +271,7 @@ test("personal cancela desde su cuenta un pago demo con importe no verificado", 
 });
 
 test("personal solicita reversión simulada si el proveedor no confirma", async ({ page }) => {
-  const username = await register(page); await recommendAndQuote(page); const id = await reserve(page);
+  const username = await provisionCustomerSession(page); await recommendAndQuote(page); const id = await reserve(page);
   await page.getByRole("button", { name: "Continuar al pago de prueba", exact: true }).press("Enter");
   await expect(page.getByRole("button", { name: "Autorizar pago de prueba", exact: true })).toBeVisible();
   const [payment] = await db.select().from(payments).where(eq(payments.reservationId, id));

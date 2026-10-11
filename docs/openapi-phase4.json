@@ -2272,6 +2272,267 @@
           }
         }
       }
+    },
+    "/api/admin/notifications": {
+      "get": {
+        "operationId": "listExhaustedNotifications",
+        "description": "Solo admin. Primeras veinte entregas locales agotadas, sin cuerpo del mensaje ni destinatario.",
+        "security": [
+          {
+            "CustomerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado autorizado; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ExhaustedNotifications"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/notifications/{id}/retry": {
+      "post": {
+        "operationId": "retryExhaustedNotification",
+        "description": "Solo admin en demo local. Reabre una entrega agotada tras revisar Mailpit; requiere motivo, confirmación e idempotencia. Máximo dos reintentos supervisados.",
+        "security": [
+          {
+            "CustomerCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Debe coincidir con el origen de la URL de solicitud"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryNotification"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado autorizado; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NotificationRetryResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3958,6 +4219,31 @@
             ],
             "additionalProperties": false
           },
+          "cohort": {
+            "type": "object",
+            "properties": {
+              "windowDays": {
+                "type": "number",
+                "const": 7
+              },
+              "consultedSessions": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "confirmedSessions": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "windowDays",
+              "consultedSessions",
+              "confirmedSessions"
+            ],
+            "additionalProperties": false
+          },
           "states": {
             "type": "array",
             "items": {
@@ -4034,6 +4320,7 @@
           "generatedAt",
           "mode",
           "totals",
+          "cohort",
           "states",
           "alerts"
         ],
@@ -4226,6 +4513,99 @@
             "additionalProperties": false
           }
         ]
+      },
+      "ExhaustedNotifications": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "reservationId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "email",
+                    "whatsapp"
+                  ]
+                },
+                "attempts": {
+                  "type": "integer",
+                  "minimum": 3,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "reservationId",
+                "channel",
+                "attempts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "simulated": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "items",
+          "hasMore",
+          "simulated"
+        ],
+        "additionalProperties": false
+      },
+      "RetryNotification": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "reason",
+          "confirmed"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationRetryResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "queued": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "queued"
+        ],
+        "additionalProperties": false
       }
     }
   }

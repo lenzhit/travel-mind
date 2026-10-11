@@ -7,14 +7,20 @@ import type { ChatInput, ChatResult } from "@/features/chat/schemas";
 import { validateDepartureDate } from "@/server/providers/mock-travel-provider";
 export const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export async function recommend(input: ChatInput): Promise<ChatResult> {
+  if (input.departureDate) validateDepartureDate(input.departureDate);
   const message = normalize(input.message);
+  if (!input.destinationId && !input.budgetMinor && /^(?:quiero|deseo|busco)\s+(?:viajar|un viaje|vacaciones)[.!?\s]*$/.test(message)) {
+    return { message: "¿Qué destino o intereses te gustaría explorar? Puedes indicarme también presupuesto y fecha.", recommendations: [], questions: ["¿Qué destino o intereses prefieres?", "¿En qué fecha deseas viajar?"], mode: "deterministic", retrieval: "catalog", preferences: { travelers: input.travelers ?? 1 } };
+  }
   const places = await db.select().from(destinations).where(eq(destinations.status, "active"));
   const place = input.destinationId ? places.find(item => item.id === input.destinationId) : places.find(item => message.includes(normalize(item.name)) || message.includes(normalize(item.region)) || normalize(item.name).split(/\W+/).filter(word => word.length >= 5 && !["sagrado", "valle", "canon", "playas", "norte", "cordillera", "blanca"].includes(word)).some(word => message.includes(word)));
+  if (!place && /\b(?:viaje|viajar|ir|volar)\s+a\s+\p{L}/u.test(message)) {
+    return { message: "No pude verificar ese destino en el catálogo. ¿Quieres indicar un destino disponible o explorar las opciones?", recommendations: [], questions: ["¿Qué destino de nuestro catálogo prefieres?"], mode: "deterministic", retrieval: "catalog", preferences: { travelers: input.travelers ?? 1, budgetMinor: input.budgetMinor, departureDate: input.departureDate } };
+  }
   const party = input.travelers ?? Number(message.match(/\b(\d{1,2})\s*(?:personas|viajeros)\b/)?.[1] || 1);
   const travelers = Math.min(20, Math.max(1, party));
   const mentionedBudget = message.match(/(?:usd|\$)\s*(\d+(?:[.,]\d{1,2})?)/)?.[1] ?? message.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:usd|dolares)/)?.[1];
   const budgetMinor = input.budgetMinor ?? (mentionedBudget ? Math.round(Number(mentionedBudget.replace(",", ".")) * 100) : undefined);
-  if (input.departureDate) validateDepartureDate(input.departureDate);
   const preferences = { travelers, budgetMinor, departureDate: input.departureDate, destinationId: place?.id };
   const questions = input.departureDate ? [] : ["¿En qué fecha deseas viajar?"];
   const rows = await db.select({ pkg: packages, doc: catalogDocuments, place: destinations.name }).from(packages).innerJoin(destinations, eq(packages.destinationId, destinations.id)).innerJoin(catalogDocuments, eq(catalogDocuments.packageId, packages.id)).where(and(eq(packages.status, "active"), eq(destinations.status, "active"), eq(catalogDocuments.status, "approved"), eq(catalogDocuments.acl, "public"), eq(catalogDocuments.language, "es-PE"), place ? eq(packages.destinationId, place.id) : undefined));

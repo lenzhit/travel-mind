@@ -341,6 +341,17 @@ export const notificationDeliveries = pgTable("notification_deliveries", {
   providerReference: varchar("provider_reference", { length: 100 }),
 }, table => [uniqueIndex("notification_event_channel_idx").on(table.eventId, table.channel)]);
 
+export const notificationRetryActions = pgTable("notification_retry_actions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  deliveryId: uuid("delivery_id").notNull().references(() => notificationDeliveries.id, { onDelete: "restrict" }),
+  actorId: uuid("actor_id").notNull().references(() => customers.id, { onDelete: "restrict" }),
+  reason: varchar("reason", { length: 500 }).notNull(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  payloadHash: varchar("payload_hash", { length: 64 }).notNull(),
+  correlationId: uuid("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [uniqueIndex("notification_retry_key_idx").on(table.deliveryId, table.idempotencyKey), index("notification_retry_delivery_idx").on(table.deliveryId, table.createdAt)]);
+
 export const caseActions = pgTable("case_actions", {
   assigneeId: uuid("assignee_id").references(() => customers.id, { onDelete: "restrict" }),
   id: uuid("id").defaultRandom().primaryKey(),

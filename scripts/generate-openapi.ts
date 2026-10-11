@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { z } from "zod";
 import { caseActionSchema, operationCasesSchema } from "../src/features/analytics/case-schemas";
 import { operationalMetricsSchema } from "../src/features/analytics/schemas";
+import { exhaustedNotificationsSchema, retryNotificationSchema } from "../src/features/analytics/notification-schemas";
 import { chatInputSchema } from "../src/features/chat/schemas";
 import { quoteInputSchema } from "../src/features/quotes/schemas";
 import { customerAuthSchema } from "../src/features/customer/schemas";
@@ -67,4 +68,19 @@ phase4.components.schemas.WorkflowJobResult = jsonSchema(z.union([
   z.object({ checked: z.number().int(), completed: z.number().int() }),
   z.object({ alerts: operationalMetricsSchema.shape.alerts, retention: z.object({ expiredAccountSessions: z.number().int(), expiredLegacySessions: z.number().int(), expiredConsultations: z.number().int(), expiredVisitors: z.number().int(), anonymizedTravelers: z.number().int() }) }),
 ]));
+phase4.paths["/api/admin/notifications"] = { get: {
+  operationId: "listExhaustedNotifications",
+  description: "Solo admin. Primeras veinte entregas locales agotadas, sin cuerpo del mensaje ni destinatario.",
+  security: [{ CustomerCookie: [] }], responses: { "200": response("ExhaustedNotifications"), ...errors },
+} };
+phase4.paths["/api/admin/notifications/{id}/retry"] = { post: {
+  operationId: "retryExhaustedNotification",
+  description: "Solo admin en demo local. Reabre una entrega agotada tras revisar Mailpit; requiere motivo, confirmación e idempotencia. Máximo dos reintentos supervisados.",
+  security: [{ CustomerCookie: [] }], parameters: [origin, pathId, idem],
+  requestBody: { required: true, content: content(ref("RetryNotification")) },
+  responses: { "200": response("NotificationRetryResult"), ...errors },
+} };
+phase4.components.schemas.ExhaustedNotifications = jsonSchema(exhaustedNotificationsSchema);
+phase4.components.schemas.RetryNotification = jsonSchema(retryNotificationSchema);
+phase4.components.schemas.NotificationRetryResult = jsonSchema(z.object({ id: uuid, queued: z.literal(true) }));
 writeFileSync("docs/openapi-phase4.json", JSON.stringify(phase4, null, 2) + "\n");

@@ -14,7 +14,8 @@ async function run() {
   await call("/api/visitor/session", "POST");
   const username = `qa_${randomUUID().slice(0, 8)}`;
   await call("/api/customer/session", "POST", { action: "register", username, password: "fixture-reserva-local" });
-  const result = await call<{ recommendations: { id: string; priceMinor: number }[] }>("/api/chat", "POST", { message: "Viaje cultural en Perú", travelers: 1, budgetMinor: 200000 });
+  const result = await call<{ mode: "ollama" | "deterministic"; recommendations: { id: string; priceMinor: number }[] }>("/api/chat", "POST", { message: "Viaje cultural en Perú", travelers: 1, budgetMinor: 200000 });
+  if (process.env.EXPECT_AI_MODE) assert.equal(result.mode, process.env.EXPECT_AI_MODE);
   const pkg = result.recommendations.find(item => item.priceMinor <= 200000);
   assert(pkg, "Debe existir una recomendación verificable dentro del umbral");
   const q = await call<{ id: string }>("/api/quote", "POST", { packageId: pkg.id, travelers: 1, departureDate: "2027-06-18" });
@@ -30,6 +31,6 @@ async function run() {
   assert.equal(confirmed.status, "confirmed_demo");
   assert.equal(confirmed.providerReference, `MOCK-${reservation.id}`);
   assert.equal((await call<{ id: string }[]>('/api/reservations')).some(row => row.id === reservation.id), true);
-  console.log(JSON.stringify({ event: "local_http_e2e_passed", username, reservationUrl: `/reservations/${reservation.id}`, mode: "demo" }));
+  console.log(JSON.stringify({ event: "local_http_e2e_passed", username, reservationUrl: `/reservations/${reservation.id}`, mode: "demo", aiMode: result.mode }));
 }
 run().catch(error => { console.error(error instanceof Error ? error.message : "Fallo de prueba local"); process.exitCode = 1; });

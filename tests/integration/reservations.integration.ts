@@ -23,6 +23,9 @@ import { GET as reservationRoute } from "@/app/api/reservations/[id]/route";
 import { POST as workflowRoute } from "@/app/api/internal/workflows/process/route";
 import { GET as approvalsRoute } from "@/app/api/admin/approvals/route";
 import { processOutbox } from "@/server/workflows/outbox";
+import { listExhaustedNotifications, retryExhaustedNotification } from "@/server/services/notification-retries";
+import { GET as exhaustedRoute } from "@/app/api/admin/notifications/route";
+import { POST as retryRoute } from "@/app/api/admin/notifications/[id]/retry/route";
 import { DELETE as signOutRoute } from "@/app/api/customer/session/route";
 const packageId = randomUUID(), destinationId = randomUUID();
 const staffIds: string[] = [];
@@ -57,12 +60,15 @@ afterAll(async () => {
     const payments = (await db.select().from(tables.payments).where(inArray(tables.payments.reservationId, ids))).map(row => row.id);
     if (approvals.length) await db.delete(tables.approvalDecisions).where(inArray(tables.approvalDecisions.approvalId, approvals));
     if (payments.length) await db.delete(tables.paymentEvents).where(inArray(tables.paymentEvents.paymentId, payments));
+    const deliveryIds = (await db.select({ id: tables.notificationDeliveries.id }).from(tables.notificationDeliveries).where(inArray(tables.notificationDeliveries.reservationId, ids))).map(row => row.id);
+    if (deliveryIds.length) await db.delete(tables.notificationRetryActions).where(inArray(tables.notificationRetryActions.deliveryId, deliveryIds));
     for (const table of [tables.caseActions, tables.notificationDeliveries, tables.workflowOutbox, tables.reservationEvents, tables.approvalRequests, tables.payments, tables.providerBookingAttempts, tables.reservationConsents]) await db.delete(table).where(inArray(table.reservationId, ids));
     await db.delete(tables.reservations).where(inArray(tables.reservations.id, ids));
   }
   const quotes = (await db.select().from(tables.quotations).where(eq(tables.quotations.sessionId, visitor.id))).map(row => row.id);
   if (quotes.length) await db.delete(tables.quotationVersions).where(inArray(tables.quotationVersions.quotationId, quotes));
   await db.delete(tables.quotations).where(eq(tables.quotations.sessionId, visitor.id));
+  await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.sessionId, visitor.id));
   await db.delete(tables.customerSessions).where(eq(tables.customerSessions.customerId, customerId));
   await db.delete(tables.visitorSessions).where(eq(tables.visitorSessions.id, visitor.id));
   await db.delete(tables.customers).where(eq(tables.customers.id, customerId));
@@ -110,6 +116,22 @@ describe("Reservas y pagos locales verificables", () => {
     expect((await bookingService.get(customerId, a)).timeline.map(row => row.event)).toEqual(["reservation_requested", "payment_processing", "pending_provider", "confirmed_demo"]);
     expect((await db.select().from(tables.mockInventory).where(eq(tables.mockInventory.departureDate, q.departureDate)))[0].remaining).toBe(0);
     expect(await db.select().from(tables.providerBookingAttempts).where(eq(tables.providerBookingAttempts.reservationId, a))).toHaveLength(1);
+  });
+  it("mide una cohorte de consultas con denominador y confirmación demo posterior", async () => {
+    const [consultation] = await db.insert(tables.consultationRuns).values({ sessionId: visitor.id, correlationId: randomUUID(), aiMode: "deterministic", retrievalMode: "catalog", recommendationCount: 1 }).returning();
+    try {
+      const q = await quote(100000, 1); const id = await reserve(q);
+      const checkout = await bookingService.checkout(customerId, id, randomUUID());
+      const sealed = provider.emit(checkout, "succeeded");
+      await service.applyEvent(sealed.event, sealed.signature);
+      const withConsultation = await readOperationalMetrics();
+      expect(withConsultation.cohort).toMatchObject({ windowDays: 7 });
+      expect(withConsultation.cohort.confirmedSessions).toBeLessThanOrEqual(withConsultation.cohort.consultedSessions);
+      await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.id, consultation.id));
+      const withoutConsultation = await readOperationalMetrics();
+      expect(withConsultation.cohort.consultedSessions).toBe(withoutConsultation.cohort.consultedSessions + 1);
+      expect(withConsultation.cohort.confirmedSessions).toBe(withoutConsultation.cohort.confirmedSessions + 1);
+    } finally { await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.id, consultation.id)); }
   });
   it("totales mayores necesitan HITL y una decisión antes del checkout", async () => {
     const q = await quote(100001); const id = await reserve(q);
@@ -239,6 +261,43 @@ describe("Reservas y pagos locales verificables", () => {
       expect(emails.length).toBeGreaterThan(0);
       expect((await db.select().from(tables.reservations).where(eq(tables.reservations.customerId, customerId))).some(row => row.status === "confirmed_demo")).toBe(true);
     } finally { vi.unstubAllGlobals(); }
+  });
+  it("reabre una entrega agotada solo con admin, motivo e idempotencia y la procesa una vez", async () => {
+    const [admin, agent] = await db.insert(tables.customers).values(["admin", "travel_agent"].map(role => ({ username: `retry_${randomUUID().slice(0, 8)}`, passwordHash: "fixture-not-used", role }))).returning();
+    staffIds.push(admin.id, agent.id);
+    const q = await quote(); const id = await reserve(q);
+    const [event] = await db.select().from(tables.reservationEvents).where(eq(tables.reservationEvents.reservationId, id));
+    const [delivery] = await db.insert(tables.notificationDeliveries).values({ reservationId: id, eventId: event.id, channel: "email", status: "failed", attempts: 3, body: "Notificación ficticia agotada" }).returning();
+    await db.update(tables.workflowOutbox).set({ status: "completed", createdAt: new Date(0) }).where(eq(tables.workflowOutbox.eventId, event.id));
+    expect((await exhaustedRoute(new NextRequest("http://localhost:3000/api/admin/notifications", { headers: { Cookie: `travelmind_customer=${customerToken}` } }))).status).toBe(403);
+    const deniedRequest = new NextRequest(`http://localhost:3000/api/admin/notifications/${delivery.id}/retry`, { method: "POST", headers: { Origin: "http://localhost:3000", "Content-Type": "application/json", "Idempotency-Key": randomUUID(), Cookie: `travelmind_customer=${customerToken}` }, body: JSON.stringify({ reason: "Mailpit restaurado", confirmed: true }) });
+    expect((await retryRoute(deniedRequest, { params: Promise.resolve({ id: delivery.id }) })).status).toBe(403);
+    expect((await listExhaustedNotifications()).items.map(row => row.id)).toContain(delivery.id);
+    const input = { reason: "Mailpit local restaurado y bandeja revisada", confirmed: true as const };
+    await expect(retryExhaustedNotification(customerId, delivery.id, input, randomUUID(), randomUUID())).rejects.toMatchObject({ status: 403 });
+    await expect(retryExhaustedNotification(agent.id, delivery.id, input, randomUUID(), randomUUID())).rejects.toMatchObject({ status: 403 });
+    const key = randomUUID();
+    const [first, repeated] = await Promise.all([retryExhaustedNotification(admin.id, delivery.id, input, key, randomUUID()), retryExhaustedNotification(admin.id, delivery.id, input, key, randomUUID())]);
+    expect(first).toEqual(repeated);
+    await expect(retryExhaustedNotification(admin.id, delivery.id, { ...input, reason: "Otro motivo" }, key, randomUUID())).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+    expect((await db.select().from(tables.notificationDeliveries).where(eq(tables.notificationDeliveries.id, delivery.id)))[0]).toMatchObject({ status: "pending", attempts: 0 });
+    expect((await db.select().from(tables.workflowOutbox).where(eq(tables.workflowOutbox.eventId, event.id)))[0].status).toBe("pending");
+    expect(await db.select().from(tables.notificationRetryActions).where(eq(tables.notificationRetryActions.deliveryId, delivery.id))).toHaveLength(1);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ID: "fixture-supervised-mailpit" }))));
+    try {
+      await processOutbox();
+      expect((await db.select().from(tables.notificationDeliveries).where(eq(tables.notificationDeliveries.id, delivery.id)))[0]).toMatchObject({ status: "sent_demo", attempts: 1, providerReference: "fixture-supervised-mailpit" });
+      await processOutbox();
+      expect(await db.select().from(tables.notificationDeliveries).where(eq(tables.notificationDeliveries.id, delivery.id))).toHaveLength(1);
+    } finally { vi.unstubAllGlobals(); }
+    // Simula dos nuevos agotamientos locales para verificar el tope supervisado.
+    await db.update(tables.notificationDeliveries).set({ status: "failed", attempts: 3, providerReference: null }).where(eq(tables.notificationDeliveries.id, delivery.id));
+    await db.update(tables.workflowOutbox).set({ status: "completed" }).where(eq(tables.workflowOutbox.eventId, event.id));
+    await retryExhaustedNotification(admin.id, delivery.id, input, randomUUID(), randomUUID());
+    await db.update(tables.notificationDeliveries).set({ status: "failed", attempts: 3 }).where(eq(tables.notificationDeliveries.id, delivery.id));
+    await db.update(tables.workflowOutbox).set({ status: "completed" }).where(eq(tables.workflowOutbox.eventId, event.id));
+    await expect(retryExhaustedNotification(admin.id, delivery.id, input, randomUUID(), randomUUID())).rejects.toMatchObject({ code: "RETRY_LIMIT", status: 429 });
+    expect(await db.select().from(tables.notificationRetryActions).where(eq(tables.notificationRetryActions.deliveryId, delivery.id))).toHaveLength(2);
   });
   it("métricas cuentan reservas únicas y detectan conciliación, vencimientos y entregas agotadas", async () => {
     const before = await readOperationalMetrics();

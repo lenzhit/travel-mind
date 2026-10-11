@@ -4,12 +4,13 @@ import { afterEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("@/features/visitor/client", () => ({ requestData: mocks.request }));
 import { OperationsDashboard } from "@/components/features/analytics/operations-dashboard";
-const snapshot = { generatedAt: "2026-10-10T12:00:00.000Z", mode: "demo", totals: { quotations: 0, reservations: 0, confirmed: 0, pendingApprovals: 0 }, states: [], alerts: { refundPending: 0, manualReview: 0, unreconciledPayments: 0, overdueApprovals: 0, failedNotifications: 0, exhaustedNotifications: 0, delayedWorkflows: 0 } };
+const snapshot = { generatedAt: "2026-10-10T12:00:00.000Z", mode: "demo", totals: { quotations: 0, reservations: 0, confirmed: 0, pendingApprovals: 0 }, cohort: { windowDays: 7, consultedSessions: 0, confirmedSessions: 0 }, states: [], alerts: { refundPending: 0, manualReview: 0, unreconciledPayments: 0, overdueApprovals: 0, failedNotifications: 0, exhaustedNotifications: 0, delayedWorkflows: 0 } };
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 it("muestra un estado vacío y no inventa indicadores comerciales", async () => {
   mocks.request.mockResolvedValueOnce(snapshot); render(<OperationsDashboard />);
   await screen.findByText("Todavía no hay solicitudes de reserva.");
   expect(screen.getByText(/No representa ventas ni reservas externas/)).toBeInTheDocument();
+  expect(screen.getByText(/Sin denominador suficiente/)).toBeInTheDocument();
   expect(screen.getByText(/No hay incidencias pendientes/)).toBeInTheDocument();
 });
 it("comunica fallo inicial y permite reintentar con datos válidos", async () => {
