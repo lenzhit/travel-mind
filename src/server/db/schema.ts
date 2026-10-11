@@ -176,6 +176,18 @@ export const visitorSessions = pgTable("visitor_sessions", {
   customerId: uuid("customer_id").references(() => customers.id, { onDelete: "restrict" }),
 }, table => [index("visitor_sessions_expiry_idx").on(table.expiresAt)]);
 
+// Operational consultation metadata only: never persist the visitor's message or prompt.
+export const consultationRuns = pgTable("consultation_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").notNull().references(() => visitorSessions.id, { onDelete: "restrict" }),
+  correlationId: uuid("correlation_id").notNull().unique(),
+  aiMode: varchar("ai_mode", { length: 20 }).notNull(),
+  retrievalMode: varchar("retrieval_mode", { length: 20 }).notNull(),
+  recommendationCount: integer("recommendation_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+}, table => [index("consultation_runs_pending_idx").on(table.processedAt, table.createdAt), check("consultation_runs_count", sql`${table.recommendationCount} >= 0 AND ${table.recommendationCount} <= 3`)]);
+
 export const ragChunks = pgTable("rag_chunks", {
   id: uuid("id").defaultRandom().primaryKey(),
   documentId: uuid("document_id").notNull().references(() => catalogDocuments.id, { onDelete: "cascade" }),

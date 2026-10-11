@@ -17,6 +17,7 @@
     "account:role": "tsx scripts/account-role.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "rag:index": "tsx src/server/ai/index-catalog.ts",
+    "ai:evaluate": "tsx scripts/evaluate-recommendations.ts",
     "quotes:expire": "tsx src/server/db/expire-quotes.ts",
     "api:docs": "tsx scripts/generate-openapi.ts",
     "workflows:run": "tsx src/server/workflows/run.ts",

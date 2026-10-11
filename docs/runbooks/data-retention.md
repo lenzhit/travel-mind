@@ -2,16 +2,17 @@
 
 Política académica del entorno de simulación; no establece un plazo legal de conservación ni acredita cumplimiento normativo.
 
-`pnpm workflows:run` ejecuta la limpieza con las mismas credenciales de la base local configurada. No se instala una tarea programada. El endpoint interno existente requiere su token de servicio; una sesión de administrador no lo sustituye. El mantenimiento rechaza modos distintos de `demo`.
+`pnpm workflows:run` ejecuta la limpieza con las mismas credenciales de la base local configurada. En esta instancia de desarrollo, el mantenimiento n8n está publicado cada cinco minutos con autorización explícita; `wf_exception_handling` también invoca la limpieza por lotes. El endpoint interno requiere su token de servicio; una sesión de administrador no lo sustituye. El mantenimiento rechaza modos distintos de `demo`.
 
-Cada ejecución aplica una transacción y cuatro lotes independientes de hasta 100 filas, ordenados desde la más antigua y con `FOR UPDATE SKIP LOCKED` para admitir ejecuciones concurrentes:
+Cada ejecución aplica una transacción y cinco lotes independientes de hasta 100 filas, ordenados desde la más antigua y con `FOR UPDATE SKIP LOCKED` para admitir ejecuciones concurrentes:
 
 - Sesiones de cuenta vencidas (incluye el instante exacto de vencimiento): elimina el hash del token, no la cuenta.
 - Sesiones administrativas antiguas vencidas: elimina credenciales retiradas; no reactiva el acceso separado.
-- Sesiones de visitante vencidas: elimina únicamente las que no tienen sesiones de cuenta ni cotizaciones vinculadas. Las sesiones que documentan propiedad de cotizaciones permanecen.
+- Metadatos de consulta con más de siete días: elimina modo de IA, modo de recuperación y conteo de recomendaciones. El mensaje del visitante nunca se persiste en esta tabla.
+- Sesiones de visitante vencidas: elimina únicamente las que no tienen sesiones de cuenta, cotizaciones ni metadatos de consulta vinculados. Las sesiones que documentan propiedad de cotizaciones permanecen.
 - Nombre del responsable: sustituye por NULL al cumplirse 30 días desde la creación de la reserva, incluso cuando el caso siga pendiente. No altera estados ni el historial financiero.
 
-La respuesta de mantenimiento incluye `retention` con cuatro contadores. No incluye hashes, nombres o identificadores de cuenta. Ejecutar nuevamente procesa los lotes restantes; el progreso depende de invocar el mantenimiento. Las pruebas no ejecutan limpieza sobre la base principal.
+La respuesta de mantenimiento incluye `retention` con cinco contadores. No incluye hashes, nombres o identificadores de cuenta. Ejecutar nuevamente procesa los lotes restantes; el progreso depende de invocar el mantenimiento. Las pruebas automatizadas no ejecutan limpieza sobre la base principal.
 
 Se conservan cuentas, cotizaciones/versiones, consentimientos, decisiones, eventos, pagos, intentos del proveedor y outbox. No existe borrado automático del ledger, de cuentas ni una interfaz de solicitud de borrado. Una política de eliminación completa requiere definir sus dependencias, obligaciones aplicables y pruebas de integridad antes de habilitarla. El operador debe gestionar el volumen de la base y las copias locales; no hay garantía de almacenamiento ilimitado.
 

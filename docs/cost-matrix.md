@@ -91,3 +91,5 @@ Atención por roles — 2026-10-11: asignación, notas y cierre local usan Postg
 | `nomic-embed-text:v1.5`, vectores 768D | [Ficha del modelo Apache-2.0](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5), [artefacto Ollama](https://ollama.com/library/nomic-embed-text/tags) | ~274 MB; 20 chunks aprobados indexados localmente. | Descarga inicial gratuita; búsqueda de catálogo sin vector disponible como fallback. |
 
 La configuración usa únicamente loopback; n8n alcanza Next.js mediante el puente local de Docker. `WORKFLOW_INTERNAL_TOKEN` se genera en archivos ignorados por Git. El consumo de CPU, RAM, disco y electricidad del equipo no forma parte del cálculo USD 0 de servicios, como define `AGENTS.md`. Se verificaron fuentes oficiales en la fecha indicada; reevaluar condiciones antes de otro uso.
+
+El incremento de cinco workflows y la tabla `consultation_runs` reutiliza n8n, PostgreSQL, Ollama y Mailpit ya inventariados; no añade paquete, servicio remoto ni cuenta facturable. El procesamiento de consultas guarda solo metadatos sin texto y los elimina tras siete días.

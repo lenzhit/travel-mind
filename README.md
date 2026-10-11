@@ -92,7 +92,7 @@ docker exec travelmind-ollama ollama pull nomic-embed-text:v1.5
 pnpm rag:index --embed
 ```
 
-El flujo n8n de mantenimiento se importa con `docker exec travelmind-n8n n8n import:workflow --input=/workflows/wf_maintenance.json`. En la instancia local de este proyecto quedó **publicado y activo cada cinco minutos** tras autorización explícita; los pasos de activación para una instalación nueva están en [operación local](docs/runbooks/operations.md). El fallback determinista y `pnpm workflows:run` permiten la demostración sin Ollama ni n8n.
+Los seis workflows locales de `workflows/n8n/` (mantenimiento, consulta, cotización, reserva, notificaciones y excepciones) están **importados y activos cada cinco minutos** en esta instancia de desarrollo. El [manual de operación](docs/runbooks/operations.md) detalla importación, publicación y pruebas para una instalación nueva. Los cinco flujos de negocio procesan trabajo acotado después de las acciones del usuario; Next.js conserva la recomendación y las decisiones de precio, HITL, pago y reserva. El fallback determinista y `pnpm workflows:run` permiten demostrar el proceso sin Ollama ni n8n. Evaluar cuatro consultas ficticias contra el catálogo local: `pnpm ai:evaluate`.
 
 ---
 
