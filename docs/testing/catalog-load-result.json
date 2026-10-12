@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-11T15:30:11.875Z",
+  "measuredAt": "2026-10-12T04:36:30.112Z",
   "mode": "demo",
   "endpoint": "/api/packages?page=1&pageSize=12",
   "sampleSize": 100,
@@ -7,10 +7,10 @@
   "warmupRequests": 5,
   "successes": 100,
   "failures": 0,
-  "elapsedMs": 815,
-  "p50Ms": 37.3,
-  "p95Ms": 58.82,
-  "maxMs": 79.95,
+  "elapsedMs": 593,
+  "p50Ms": 28.87,
+  "p95Ms": 33.01,
+  "maxMs": 54.22,
   "hardware": {
     "cpu": "AMD Ryzen 5 5600H with Radeon Graphics",
     "logicalCpus": 12,

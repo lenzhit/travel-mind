@@ -77,6 +77,101 @@
       ],
       "retryOnFail": false,
       "notes": "Next.js autentica system, aplica reglas, persiste e impone idempotencia. No se reintentan automáticamente errores de negocio ni pagos."
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "travelmind-reservation",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "event-webhook",
+      "name": "Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "51d5774e-e1b6-56fa-9683-ecf50a5af998",
+      "position": [
+        240,
+        620
+      ],
+      "notes": "Solo loopback. El token se compara antes de usar la identidad system; el cuerpo contiene UUID sin PII."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "event-token-check",
+              "leftValue": "={{ $json.headers['x-travelmind-event-token'] }}",
+              "rightValue": "={{ $env.WORKFLOW_INTERNAL_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "event-auth",
+      "name": "Check Event Token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        430,
+        620
+      ],
+      "notes": "Rama falsa termina sin invocar Next.js."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'http://host.docker.internal:3000/api/internal/workflows/events/' + $json.body.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.WORKFLOW_INTERNAL_TOKEN }}"
+            },
+            {
+              "name": "X-Correlation-Id",
+              "value": "={{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": false,
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "event-callback",
+      "name": "Process Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        620
+      ],
+      "retryOnFail": false,
+      "notes": "Next.js reclama una vez, persiste resultado y limita reintentos. Un replay es idempotente."
     }
   ],
   "connections": {
@@ -100,6 +195,29 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Event Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Event Token": {
+      "main": [
+        [
+          {
+            "node": "Process Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

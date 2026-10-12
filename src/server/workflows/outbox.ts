@@ -3,8 +3,8 @@ import { db } from "@/server/db";
 import { customers, notificationDeliveries, reservationEvents, reservations, workflowOutbox } from "@/server/db/schema";
 import { sendMailpit } from "@/server/providers/mailpit-provider";
 import { SIMULATION_NOTICE } from "@/features/reservations/schemas";
-export async function processOutbox(limit = 10) {
-  const tasks = await db.select({ id: workflowOutbox.id }).from(workflowOutbox).where(eq(workflowOutbox.status, "pending")).orderBy(workflowOutbox.createdAt).limit(Math.min(10, Math.max(1, limit)));
+export async function processOutbox(limit = 10, eventId?: string) {
+  const tasks = await db.select({ id: workflowOutbox.id }).from(workflowOutbox).where(eventId ? and(eq(workflowOutbox.status, "pending"), eq(workflowOutbox.eventId, eventId)) : eq(workflowOutbox.status, "pending")).orderBy(workflowOutbox.createdAt).limit(Math.min(10, Math.max(1, limit)));
   let completed = 0;
   for (const task of tasks) await db.transaction(async tx => {
     const [locked] = await tx.select().from(workflowOutbox).where(and(eq(workflowOutbox.id, task.id), eq(workflowOutbox.status, "pending"))).for("update", { skipLocked: true });

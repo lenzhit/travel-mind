@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "demo:start": "bash scripts/start-demo.sh",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -21,6 +22,8 @@
     "quotes:expire": "tsx src/server/db/expire-quotes.ts",
     "api:docs": "tsx scripts/generate-openapi.ts",
     "workflows:run": "tsx src/server/workflows/run.ts",
+    "workflows:dispatch": "tsx scripts/dispatch-business-events.ts",
+    "workflows:replay-check": "tsx scripts/check-event-replay.ts",
     "workflows:setup": "tsx scripts/setup-workflow-token.ts",
     "test:load": "tsx scripts/load-catalog.ts",
     "test:e2e": "pnpm build && playwright test",
@@ -40,6 +43,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.64.0",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/jest-dom": "^6.6.3",
@@ -60,5 +64,3 @@
   },
   "packageManager": "pnpm@10.33.0"
 }
-
-

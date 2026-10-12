@@ -5,6 +5,7 @@ import { readAdminBody } from "@/server/services/admin-http";
 import { visitorHandler } from "@/server/services/visitor-http";
 import { quotationService } from "@/server/services/quotation.service";
 import { AdminError } from "@/server/services/admin-errors";
+import { scheduleBusinessDispatch } from "@/server/workflows/business-events";
 export async function POST(request: NextRequest) {
   return visitorHandler(request, async (sessionId, correlationId) => {
     const key = request.headers.get("idempotency-key");
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
     const input = await readAdminBody(request, quoteInputSchema);
     const id = await quotationService.issue(sessionId, input, key, correlationId);
     const data = await quotationService.get(sessionId, id);
+    scheduleBusinessDispatch();
     console.info(JSON.stringify({ event: "quote_issued", correlation_id: correlationId, quotation_id: id, mode: "demo" }));
     return data;
   }, 201);

@@ -2273,6 +2273,128 @@
         }
       }
     },
+    "/api/internal/workflows/events/{id}": {
+      "post": {
+        "operationId": "processBusinessEvent",
+        "description": "Callback system de n8n para un UUID persistido. Reclamo con lease, replay idempotente, reintento acotado y cola de excepción. Sin datos personales en la solicitud.",
+        "security": [
+          {
+            "SystemToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado autorizado; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkflowEventResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Contrato inválido, sesión, autorización, conflicto, límite o servicio no disponible; consultar error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/notifications": {
       "get": {
         "operationId": "listExhaustedNotifications",
@@ -2576,6 +2698,11 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 2147483647
+          },
+          "durationDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30
           },
           "departureDate": {
             "type": "string",
@@ -4244,6 +4371,163 @@
             ],
             "additionalProperties": false
           },
+          "kpis": {
+            "type": "object",
+            "properties": {
+              "windowDays": {
+                "type": "number",
+                "const": 7
+              },
+              "consultations": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "automaticRecommendations": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "quotes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "acceptedQuotes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "reservations": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "confirmed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "openIncidents": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "resolvedIncidents": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "notifications": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "notificationsSent": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "eventRetries": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "workflowErrors": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "firstResponseSamples": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "firstResponseP50Ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "firstResponseP95Ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "confirmationSamples": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "confirmationP50Ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resolutionSamples": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "resolutionP50Ms": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "windowDays",
+              "consultations",
+              "automaticRecommendations",
+              "quotes",
+              "acceptedQuotes",
+              "reservations",
+              "confirmed",
+              "failed",
+              "openIncidents",
+              "resolvedIncidents",
+              "notifications",
+              "notificationsSent",
+              "eventRetries",
+              "workflowErrors",
+              "firstResponseSamples",
+              "firstResponseP50Ms",
+              "firstResponseP95Ms",
+              "confirmationSamples",
+              "confirmationP50Ms",
+              "resolutionSamples",
+              "resolutionP50Ms"
+            ],
+            "additionalProperties": false
+          },
           "states": {
             "type": "array",
             "items": {
@@ -4321,6 +4605,7 @@
           "mode",
           "totals",
           "cohort",
+          "kpis",
           "states",
           "alerts"
         ],
@@ -4480,6 +4765,11 @@
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
                   },
+                  "expiredBusinessEvents": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
                   "expiredConsultations": {
                     "type": "integer",
                     "minimum": -9007199254740991,
@@ -4499,6 +4789,7 @@
                 "required": [
                   "expiredAccountSessions",
                   "expiredLegacySessions",
+                  "expiredBusinessEvents",
                   "expiredConsultations",
                   "expiredVisitors",
                   "anonymizedTravelers"
@@ -4513,6 +4804,34 @@
             "additionalProperties": false
           }
         ]
+      },
+      "WorkflowEventResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "dead"
+            ]
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "replayed"
+        ],
+        "additionalProperties": false
       },
       "ExhaustedNotifications": {
         "type": "object",

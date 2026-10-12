@@ -16,12 +16,12 @@ export default async function setup() {
     await conn`CREATE EXTENSION IF NOT EXISTS vector`;
     await migrate(db, { migrationsFolder: "./src/server/db/migrations" });
     // Solo la base exclusiva de E2E: no se reutiliza la base del usuario.
-    await conn`TRUNCATE TABLE destinations, customers, visitor_sessions CASCADE`;
+    await conn`TRUNCATE TABLE destinations, customers, visitor_sessions, business_events CASCADE`;
     execFileSync(process.execPath, ["--import", "tsx", "src/server/db/seed.ts"], { stdio: "inherit", env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL, APP_MODE: "demo" } });
   } finally { await conn.end(); }
   return async () => {
     const cleanup = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });
-    try { await cleanup`TRUNCATE TABLE customers, visitor_sessions CASCADE`; }
+    try { await cleanup`TRUNCATE TABLE customers, visitor_sessions, business_events CASCADE`; }
     finally { await cleanup.end(); }
   };
 }

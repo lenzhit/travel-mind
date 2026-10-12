@@ -184,6 +184,7 @@ export const consultationRuns = pgTable("consultation_runs", {
   aiMode: varchar("ai_mode", { length: 20 }).notNull(),
   retrievalMode: varchar("retrieval_mode", { length: 20 }).notNull(),
   recommendationCount: integer("recommendation_count").notNull(),
+  responseDurationMs: integer("response_duration_ms"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true }),
 }, table => [index("consultation_runs_pending_idx").on(table.processedAt, table.createdAt), check("consultation_runs_count", sql`${table.recommendationCount} >= 0 AND ${table.recommendationCount} <= 3`)]);
@@ -330,6 +331,29 @@ export const workflowOutbox = pgTable("workflow_outbox", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Durable signals for n8n. Payloads are deliberately limited to source UUIDs.
+export const businessEvents = pgTable("business_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kind: varchar("kind", { length: 20 }).notNull(),
+  sourceId: uuid("source_id").notNull(),
+  correlationId: uuid("correlation_id").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  deliveryAttempts: integer("delivery_attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+  leaseToken: uuid("lease_token"),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  errorCode: varchar("error_code", { length: 40 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+}, table => [
+  uniqueIndex("business_event_source_idx").on(table.kind, table.sourceId),
+  index("business_event_due_idx").on(table.status, table.nextAttemptAt),
+  check("business_event_kind_check", sql`${table.kind} IN ('consultation','quotation','reservation','notifications','exception')`),
+  check("business_event_status_check", sql`${table.status} IN ('pending','processing','completed','dead')`),
+  check("business_event_attempts_check", sql`${table.attempts} >= 0 AND ${table.deliveryAttempts} >= 0`),
+]);
 export const notificationDeliveries = pgTable("notification_deliveries", {
   id: uuid("id").defaultRandom().primaryKey(),
   reservationId: uuid("reservation_id").notNull().references(() => reservations.id, { onDelete: "restrict" }),

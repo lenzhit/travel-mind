@@ -43,6 +43,8 @@ TravelMind automatiza el ciclo de vida de atención turística B2C (consulta sem
 
 Estado verificado del MVP y pendientes: [auditoría del 2026-10-11](docs/mvp-audit-2026-10-11.md). Los pagos y las reservas son simulados; el flujo completo no requiere cuentas comerciales.
 
+**Arranque y demostración recomendados:** `pnpm install --frozen-lockfile && pnpm demo:start`. El script conserva los datos existentes y prepara los servicios locales; instrucciones de recorrido, roles y pruebas en [docs/DEMO.md](docs/DEMO.md).
+
 ### 4.1 Clonar el repositorio
 ```bash
 git clone <url-del-repositorio>
@@ -92,7 +94,7 @@ docker exec travelmind-ollama ollama pull nomic-embed-text:v1.5
 pnpm rag:index --embed
 ```
 
-Los seis workflows locales de `workflows/n8n/` (mantenimiento, consulta, cotización, reserva, notificaciones y excepciones) están **importados y activos cada cinco minutos** en esta instancia de desarrollo. El [manual de operación](docs/runbooks/operations.md) detalla importación, publicación y pruebas para una instalación nueva. Los cinco flujos de negocio procesan trabajo acotado después de las acciones del usuario; Next.js conserva la recomendación y las decisiones de precio, HITL, pago y reserva. El fallback determinista y `pnpm workflows:run` permiten demostrar el proceso sin Ollama ni n8n. Evaluar cuatro consultas ficticias contra el catálogo local: `pnpm ai:evaluate`.
+Los seis workflows locales de `workflows/n8n/` (mantenimiento, consulta, cotización, reserva, notificaciones y excepciones) están **importados y activos cada cinco minutos** en esta instancia de desarrollo. El [manual de operación](docs/runbooks/operations.md) detalla importación, publicación y pruebas para una instalación nueva. Los cinco flujos de negocio reciben eventos durables por webhook y procesan trabajo acotado después de las acciones del usuario; Next.js conserva la recomendación y las decisiones de precio, HITL, pago y reserva. El fallback determinista y `pnpm workflows:run` permiten demostrar el proceso sin Ollama ni n8n. Evaluar 30 consultas ficticias y seis concurrentes contra el catálogo local: `pnpm ai:evaluate`.
 
 ---
 

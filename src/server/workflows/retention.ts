@@ -13,6 +13,10 @@ export async function applyRetention(now = new Date()) {
       ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED
     ) DELETE FROM admin_sessions WHERE token_hash IN (SELECT token_hash FROM candidates) RETURNING token_hash`);
     const consultationCutoff = new Date(now.getTime() - 7 * 86400000);
+    const completedEvents = await tx.execute(sql`WITH candidates AS (
+      SELECT id FROM business_events WHERE status = 'completed' AND processed_at <= ${consultationCutoff.toISOString()}::timestamptz
+      ORDER BY processed_at LIMIT 100 FOR UPDATE SKIP LOCKED
+    ) DELETE FROM business_events WHERE id IN (SELECT id FROM candidates) RETURNING id`);
     const consultations = await tx.execute(sql`WITH candidates AS (
       SELECT id FROM consultation_runs WHERE created_at <= ${consultationCutoff.toISOString()}::timestamptz
       ORDER BY created_at LIMIT 100 FOR UPDATE SKIP LOCKED
@@ -29,6 +33,6 @@ export async function applyRetention(now = new Date()) {
       SELECT id FROM reservations WHERE created_at <= ${cutoff.toISOString()}::timestamptz AND traveler_name IS NOT NULL
       ORDER BY created_at LIMIT 100 FOR UPDATE SKIP LOCKED
     ) UPDATE reservations SET traveler_name = NULL WHERE id IN (SELECT id FROM candidates) RETURNING id`);
-    return { expiredAccountSessions: sessions.length, expiredLegacySessions: legacy.length, expiredConsultations: consultations.length, expiredVisitors: visitors.length, anonymizedTravelers: names.length };
+    return { expiredAccountSessions: sessions.length, expiredLegacySessions: legacy.length, expiredBusinessEvents: completedEvents.length, expiredConsultations: consultations.length, expiredVisitors: visitors.length, anonymizedTravelers: names.length };
   });
 }

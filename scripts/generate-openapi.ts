@@ -66,8 +66,15 @@ phase4.components.schemas.WorkflowJobResult = jsonSchema(z.union([
   z.object({ expired: z.number().int() }),
   z.object({ approvalsChecked: z.number().int(), refundsReconciled: z.number().int(), refundsNeedsReview: z.number().int() }),
   z.object({ checked: z.number().int(), completed: z.number().int() }),
-  z.object({ alerts: operationalMetricsSchema.shape.alerts, retention: z.object({ expiredAccountSessions: z.number().int(), expiredLegacySessions: z.number().int(), expiredConsultations: z.number().int(), expiredVisitors: z.number().int(), anonymizedTravelers: z.number().int() }) }),
+  z.object({ alerts: operationalMetricsSchema.shape.alerts, retention: z.object({ expiredAccountSessions: z.number().int(), expiredLegacySessions: z.number().int(), expiredBusinessEvents: z.number().int(), expiredConsultations: z.number().int(), expiredVisitors: z.number().int(), anonymizedTravelers: z.number().int() }) }),
 ]));
+phase4.paths["/api/internal/workflows/events/{id}"] = { post: {
+  operationId: "processBusinessEvent",
+  description: "Callback system de n8n para un UUID persistido. Reclamo con lease, replay idempotente, reintento acotado y cola de excepción. Sin datos personales en la solicitud.",
+  security: [{ SystemToken: [] }], parameters: [pathId],
+  responses: { "200": response("WorkflowEventResult"), ...errors },
+} };
+phase4.components.schemas.WorkflowEventResult = jsonSchema(z.object({ id: uuid, status: z.enum(["pending", "processing", "completed", "dead"]), replayed: z.boolean() }));
 phase4.paths["/api/admin/notifications"] = { get: {
   operationId: "listExhaustedNotifications",
   description: "Solo admin. Primeras veinte entregas locales agotadas, sin cuerpo del mensaje ni destinatario.",

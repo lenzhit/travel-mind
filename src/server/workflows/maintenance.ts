@@ -6,6 +6,7 @@ import { paymentService } from "@/server/services/payment.service";
 import { processOutbox } from "./outbox";
 import { AdminError } from "@/server/services/admin-errors";
 import { applyRetention } from "./retention";
+import { dispatchBusinessEvents } from "./business-events";
 export async function runMaintenance() {
   if ((process.env.APP_MODE || "demo") !== "demo") throw new AdminError("DEMO_ONLY", "El mantenimiento solo está habilitado en el entorno local de simulación.", 403);
   const rows = await db.select({ id: reservations.id, customerId: reservations.customerId }).from(reservations).where(eq(reservations.status, "refund_pending")).limit(10);
@@ -17,5 +18,7 @@ export async function runMaintenance() {
   const pending = await db.select({ id: reservations.id, customerId: reservations.customerId }).from(reservations).innerJoin(approvalRequests, and(eq(approvalRequests.reservationId, reservations.id), eq(approvalRequests.quoteVersion, reservations.quoteVersion))).where(and(eq(reservations.status, "pending_approval"), lte(approvalRequests.expiresAt, new Date()))).limit(50);
   for (const row of pending) await bookingService.get(row.customerId, row.id);
   const retention = await applyRetention();
-  return { ...await processOutbox(), refundsReconciled, refundsNeedsReview, retention };
+  const outbox = await processOutbox();
+  const eventDispatch = await dispatchBusinessEvents(5);
+  return { ...outbox, refundsReconciled, refundsNeedsReview, retention, eventDispatch };
 }

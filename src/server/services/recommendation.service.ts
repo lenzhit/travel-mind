@@ -13,19 +13,22 @@ export async function recommend(input: ChatInput): Promise<ChatResult> {
     return { message: "¿Qué destino o intereses te gustaría explorar? Puedes indicarme también presupuesto y fecha.", recommendations: [], questions: ["¿Qué destino o intereses prefieres?", "¿En qué fecha deseas viajar?"], mode: "deterministic", retrieval: "catalog", preferences: { travelers: input.travelers ?? 1 } };
   }
   const places = await db.select().from(destinations).where(eq(destinations.status, "active"));
-  const place = input.destinationId ? places.find(item => item.id === input.destinationId) : places.find(item => message.includes(normalize(item.name)) || message.includes(normalize(item.region)) || normalize(item.name).split(/\W+/).filter(word => word.length >= 5 && !["sagrado", "valle", "canon", "playas", "norte", "cordillera", "blanca"].includes(word)).some(word => message.includes(word)));
-  if (!place && /\b(?:viaje|viajar|ir|volar)\s+a\s+\p{L}/u.test(message)) {
+  const namedDestination = message.match(/\b(?:viaje|viajar|ir|volar)\s+a\s+(?:(?:la|el|los|las)\s+)?(\p{L}{3,})/u)?.[1];
+  const namedPlace = namedDestination ? places.find(item => normalize(item.name).split(/\W+/).includes(namedDestination) || normalize(item.region).split(/\W+/).includes(namedDestination)) : undefined;
+  const place = input.destinationId ? places.find(item => item.id === input.destinationId) : namedDestination ? namedPlace : places.find(item => message.includes(normalize(item.name)) || message.includes(normalize(item.region)) || normalize(item.name).split(/\W+/).filter(word => word.length >= 5 && !["sagrado", "valle", "canon", "playas", "norte", "cordillera", "blanca", "destino", "reserva", "fixture"].includes(word)).some(word => message.includes(word)));
+  if (!place && namedDestination) {
     return { message: "No pude verificar ese destino en el catálogo. ¿Quieres indicar un destino disponible o explorar las opciones?", recommendations: [], questions: ["¿Qué destino de nuestro catálogo prefieres?"], mode: "deterministic", retrieval: "catalog", preferences: { travelers: input.travelers ?? 1, budgetMinor: input.budgetMinor, departureDate: input.departureDate } };
   }
   const party = input.travelers ?? Number(message.match(/\b(\d{1,2})\s*(?:personas|viajeros)\b/)?.[1] || 1);
   const travelers = Math.min(20, Math.max(1, party));
   const mentionedBudget = message.match(/(?:usd|\$)\s*(\d+(?:[.,]\d{1,2})?)/)?.[1] ?? message.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:usd|dolares)/)?.[1];
   const budgetMinor = input.budgetMinor ?? (mentionedBudget ? Math.round(Number(mentionedBudget.replace(",", ".")) * 100) : undefined);
+  const durationDays = input.durationDays ?? (Number(message.match(/\b(\d{1,2})\s*dias?\b/)?.[1] || 0) || undefined);
   const preferences = { travelers, budgetMinor, departureDate: input.departureDate, destinationId: place?.id };
   const questions = input.departureDate ? [] : ["¿En qué fecha deseas viajar?"];
   const rows = await db.select({ pkg: packages, doc: catalogDocuments, place: destinations.name }).from(packages).innerJoin(destinations, eq(packages.destinationId, destinations.id)).innerJoin(catalogDocuments, eq(catalogDocuments.packageId, packages.id)).where(and(eq(packages.status, "active"), eq(destinations.status, "active"), eq(catalogDocuments.status, "approved"), eq(catalogDocuments.acl, "public"), eq(catalogDocuments.language, "es-PE"), place ? eq(packages.destinationId, place.id) : undefined));
   const avoidTrekking = /(?:sin|no quiero|evitar)\s+(?:hacer\s+)?(?:trekking|caminatas)/.test(message);
-  const eligible = rows.filter(({ pkg, doc }) => pkg.currency === "USD" && (budgetMinor === undefined || pkg.basePriceMinor * travelers <= budgetMinor) && (!avoidTrekking || !/\btrek(?:king)?\b|senderismo|caminata|ascenso/i.test(pkg.title + pkg.description + doc.content))).slice(0, 50);
+  const eligible = rows.filter(({ pkg, doc }) => pkg.currency === "USD" && (budgetMinor === undefined || pkg.basePriceMinor * travelers <= budgetMinor) && (durationDays === undefined || pkg.durationDays === durationDays) && (!avoidTrekking || !/\btrek(?:king)?\b|senderismo|caminata|ascenso/i.test(pkg.title + pkg.description + doc.content))).slice(0, 50);
   const requestedUnknown = input.destinationId && !place;
   if (!eligible.length || requestedUnknown) return { message: "No encontré opciones que cumplan tus preferencias. Puedes ajustar el destino o el presupuesto.", recommendations: [], questions, mode: "deterministic", retrieval: "catalog", preferences };
   const chunks = await db.select().from(ragChunks).where(inArray(ragChunks.documentId, eligible.map(row => row.doc.id)));

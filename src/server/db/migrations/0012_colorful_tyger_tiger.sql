@@ -1,0 +1,1 @@
+ALTER TABLE "consultation_runs" ADD COLUMN "response_duration_ms" integer;

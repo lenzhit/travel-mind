@@ -118,7 +118,7 @@ describe("Reservas y pagos locales verificables", () => {
     expect(await db.select().from(tables.providerBookingAttempts).where(eq(tables.providerBookingAttempts.reservationId, a))).toHaveLength(1);
   });
   it("mide una cohorte de consultas con denominador y confirmación demo posterior", async () => {
-    const [consultation] = await db.insert(tables.consultationRuns).values({ sessionId: visitor.id, correlationId: randomUUID(), aiMode: "deterministic", retrievalMode: "catalog", recommendationCount: 1 }).returning();
+    const [consultation] = await db.insert(tables.consultationRuns).values({ sessionId: visitor.id, correlationId: randomUUID(), aiMode: "deterministic", retrievalMode: "catalog", recommendationCount: 1, responseDurationMs: 800 }).returning();
     try {
       const q = await quote(100000, 1); const id = await reserve(q);
       const checkout = await bookingService.checkout(customerId, id, randomUUID());
@@ -127,11 +127,19 @@ describe("Reservas y pagos locales verificables", () => {
       const withConsultation = await readOperationalMetrics();
       expect(withConsultation.cohort).toMatchObject({ windowDays: 7 });
       expect(withConsultation.cohort.confirmedSessions).toBeLessThanOrEqual(withConsultation.cohort.consultedSessions);
+      expect(withConsultation.kpis.automaticRecommendations).toBeLessThanOrEqual(withConsultation.kpis.consultations);
+      expect(withConsultation.kpis.acceptedQuotes).toBeLessThanOrEqual(withConsultation.kpis.quotes);
+      expect(withConsultation.kpis.confirmed).toBeLessThanOrEqual(withConsultation.kpis.reservations);
+      expect(withConsultation.kpis.notificationsSent).toBeLessThanOrEqual(withConsultation.kpis.notifications);
+      expect(withConsultation.kpis.firstResponseP50Ms).not.toBeNull();
       await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.id, consultation.id));
       const withoutConsultation = await readOperationalMetrics();
       expect(withConsultation.cohort.consultedSessions).toBe(withoutConsultation.cohort.consultedSessions + 1);
       expect(withConsultation.cohort.confirmedSessions).toBe(withoutConsultation.cohort.confirmedSessions + 1);
-    } finally { await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.id, consultation.id)); }
+      expect(withConsultation.kpis.consultations).toBe(withoutConsultation.kpis.consultations + 1);
+      expect(withConsultation.kpis.automaticRecommendations).toBe(withoutConsultation.kpis.automaticRecommendations + 1);
+      expect(withConsultation.kpis.firstResponseSamples).toBe(withoutConsultation.kpis.firstResponseSamples + 1);
+    } finally { await db.delete(tables.businessEvents).where(eq(tables.businessEvents.sourceId, consultation.id)); await db.delete(tables.consultationRuns).where(eq(tables.consultationRuns.id, consultation.id)); }
   });
   it("totales mayores necesitan HITL y una decisión antes del checkout", async () => {
     const q = await quote(100001); const id = await reserve(q);

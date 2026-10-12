@@ -34,42 +34,38 @@ export function Pagination({
       aria-label="Paginación de resultados"
       className="flex items-center justify-center gap-2 py-8"
     >
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        disabled={currentPage <= 1}
-        className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-      >
-        <Link
-          href={createPageUrl(currentPage - 1)}
-          aria-label="Ir a la página anterior"
-        >
+      {currentPage <= 1 ? (
+        <Button variant="outline" size="sm" disabled aria-label="Ir a la página anterior">
           <ChevronLeft className="size-4 mr-1" aria-hidden="true" />
           Anterior
-        </Link>
-      </Button>
+        </Button>
+      ) : (
+        <Button asChild variant="outline" size="sm">
+          <Link href={createPageUrl(currentPage - 1)} aria-label="Ir a la página anterior">
+            <ChevronLeft className="size-4 mr-1" aria-hidden="true" />
+            Anterior
+          </Link>
+        </Button>
+      )}
 
       <span className="text-xs text-muted-foreground px-3 font-medium">
         Página <strong className="text-foreground">{currentPage}</strong> de{" "}
         <strong className="text-foreground">{totalPages}</strong>
       </span>
 
-      <Button
-        asChild
-        variant="outline"
-        size="sm"
-        disabled={currentPage >= totalPages}
-        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
-      >
-        <Link
-          href={createPageUrl(currentPage + 1)}
-          aria-label="Ir a la página siguiente"
-        >
+      {currentPage >= totalPages ? (
+        <Button variant="outline" size="sm" disabled aria-label="Ir a la página siguiente">
           Siguiente
           <ChevronRight className="size-4 ml-1" aria-hidden="true" />
-        </Link>
-      </Button>
+        </Button>
+      ) : (
+        <Button asChild variant="outline" size="sm">
+          <Link href={createPageUrl(currentPage + 1)} aria-label="Ir a la página siguiente">
+            Siguiente
+            <ChevronRight className="size-4 ml-1" aria-hidden="true" />
+          </Link>
+        </Button>
+      )}
     </nav>
   );
 }

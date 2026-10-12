@@ -40,8 +40,8 @@ afterAll(async () => {
 describe("Recomendación y cotización sin servicios externos", () => {
   it("evalúa grounding y preferencias del dataset local", async () => {
     for (const example of recommendationEvaluation) {
-      const result = await recommend({ message: example.message, travelers: example.travelers ?? 2, budgetMinor: example.budgetMinor });
-      if (example.expectEmpty) expect(result.recommendations).toHaveLength(0);
+      const result = await recommend({ message: example.message, travelers: example.travelers ?? 2, budgetMinor: example.budgetMinor, durationDays: example.durationDays });
+      if (example.expectEmpty) expect(result.recommendations, example.message).toHaveLength(0);
       else expect(result.recommendations.map(item => item.slug)).toContain(example.expectedSlug);
       if (example.forbiddenSlug) expect(result.recommendations.map(item => item.slug)).not.toContain(example.forbiddenSlug);
       for (const item of result.recommendations) {

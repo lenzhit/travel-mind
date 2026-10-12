@@ -4,6 +4,7 @@ export const chatInputSchema = z.object({
   destinationId: z.string().uuid().optional(),
   travelers: z.number().int().min(1).max(20).optional(),
   budgetMinor: z.number().int().min(1).max(2147483647).optional(),
+  durationDays: z.number().int().min(1).max(30).optional(),
   departureDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict();
 export type ChatInput = z.infer<typeof chatInputSchema>;
